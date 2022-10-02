@@ -1,5 +1,5 @@
 {
-  "name": "Sportofi",
+  "name": "sportofi",
   "packageManager": "yarn@3.2.3",
   "scripts": {
     "deploy:bscTest": "hardhat run --network bscTest scripts/deploy.ts",
