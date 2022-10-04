@@ -14,7 +14,7 @@ import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeab
 import "./interfaces/IGovernance.sol";
 
 contract GovernanceUpgradeable is
-    IGovernanceV2,
+    IGovernance,
     UUPSUpgradeable,
     PausableUpgradeable,
     ProxyCheckerUpgradeable,
@@ -31,14 +31,12 @@ contract GovernanceUpgradeable is
 
         address sender = _msgSender();
         _grantRole(Roles.PAUSER_ROLE, sender);
-        _grantRole(Roles.MINTER_ROLE, sender);
         _grantRole(Roles.OPERATOR_ROLE, sender);
         _grantRole(Roles.UPGRADER_ROLE, sender);
         _grantRole(Roles.TREASURER_ROLE, sender);
         _grantRole(DEFAULT_ADMIN_ROLE, sender);
 
         _setRoleAdmin(Roles.OPERATOR_ROLE, Roles.PAUSER_ROLE);
-        _setRoleAdmin(Roles.OPERATOR_ROLE, Roles.MINTER_ROLE);
         _setRoleAdmin(Roles.OPERATOR_ROLE, Roles.TREASURER_ROLE);
     }
 
@@ -66,7 +64,7 @@ contract GovernanceUpgradeable is
     function paused()
         public
         view
-        override(IGovernanceV2, PausableUpgradeable)
+        override(IGovernance, PausableUpgradeable)
         returns (bool)
     {
         return PausableUpgradeable.paused();

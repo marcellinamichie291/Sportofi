@@ -5,7 +5,7 @@ import "../internal-upgradeable/interfaces/IWithdrawableUpgradeable.sol";
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
-interface ITreasuryV2 is IWithdrawableUpgradeable {
+interface ITreasury is IWithdrawableUpgradeable {
     // error Treasury__Expired();
     // error Treasury__LengthMismatch();
 

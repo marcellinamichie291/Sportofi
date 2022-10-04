@@ -44,36 +44,6 @@ abstract contract SignableUpgradeable is
         );
     }
 
-    function _verify(
-        address sender_,
-        address verifier_,
-        bytes32 structHash_,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) internal view virtual {
-        _checkVerifier(
-            sender_,
-            verifier_,
-            _hashTypedDataV4(structHash_),
-            v,
-            r,
-            s
-        );
-    }
-
-    function _checkVerifier(
-        address sender_,
-        address verifier_,
-        bytes32 digest_,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) internal view virtual {
-        if (_recoverSigner(digest_, v, r, s) != verifier_)
-            revert Signable__InvalidSignature(sender_);
-    }
-
     function _checkVerifier(
         address sender_,
         address verifier_,
@@ -84,21 +54,12 @@ abstract contract SignableUpgradeable is
             revert Signable__InvalidSignature(sender_);
     }
 
-    function _recoverSigner(bytes32 digest_, bytes calldata signature_)
+    function _recoverSigner(bytes32 structHash_, bytes calldata signature_)
         internal
-        pure
+        view
         returns (address)
     {
-        return digest_.recover(signature_);
-    }
-
-    function _recoverSigner(
-        bytes32 digest_,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) internal pure returns (address) {
-        return digest_.recover(v, r, s);
+        return _hashTypedDataV4(structHash_).recover(signature_);
     }
 
     function _useNonce(address sender_) internal virtual returns (uint256) {

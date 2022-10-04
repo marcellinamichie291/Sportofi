@@ -5,7 +5,7 @@ import "@openzeppelin/contracts-upgradeable/access/IAccessControlEnumerableUpgra
 
 import "../internal-upgradeable/interfaces/IBlacklistableUpgradeable.sol";
 
-interface IGovernanceV2 is
+interface IGovernance is
     IBlacklistableUpgradeable,
     IAccessControlEnumerableUpgradeable
 {

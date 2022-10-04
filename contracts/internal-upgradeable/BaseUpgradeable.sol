@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.15;
-
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
@@ -16,13 +14,10 @@ error Base__Unauthorized();
 error Base__AuthorizeFailed();
 error Base__UserIsBlacklisted();
 
-abstract contract BaseUpgradeable is Initializable, UUPSUpgradeable {
+abstract contract BaseUpgradeable is ContextUpgradeable, UUPSUpgradeable {
     bytes32 private _governance;
 
-    event GovernanceUpdated(
-        IGovernanceV2 indexed from,
-        IGovernanceV2 indexed to
-    );
+    event GovernanceUpdated(IGovernance indexed from, IGovernance indexed to);
 
     modifier onlyRole(bytes32 role) {
         _checkRole(role, _msgSender());
@@ -44,37 +39,37 @@ abstract contract BaseUpgradeable is Initializable, UUPSUpgradeable {
         _;
     }
 
-    function updateGovernance(IGovernanceV2 governance_)
+    function updateGovernance(IGovernance governance_)
         external
         onlyRole(Roles.OPERATOR_ROLE)
     {
-        IGovernanceV2 old = governance();
+        IGovernance old = governance();
         if (old == governance_) revert Base__AlreadySet();
         __updateGovernance(governance_);
         emit GovernanceUpdated(old, governance_);
     }
 
-    function governance() public view returns (IGovernanceV2 governance_) {
+    function governance() public view returns (IGovernance governance_) {
         assembly {
             governance_ := sload(_governance.slot)
         }
     }
 
-    function __Base_init(IGovernanceV2 governance_, bytes32 role_)
+    function __Base_init(IGovernance governance_, bytes32 role_)
         internal
         onlyInitializing
     {
         __Base_init_unchained(governance_, role_);
     }
 
-    function __Base_init_unchained(IGovernanceV2 governance_, bytes32 role_)
+    function __Base_init_unchained(IGovernance governance_, bytes32 role_)
         internal
         onlyInitializing
     {
         if (role_ != 0) {
             (bool ok, ) = address(governance_).call(
                 abi.encodeWithSelector(
-                    IGovernanceV2.requestAccess.selector,
+                    IGovernance.requestAccess.selector,
                     role_
                 )
             );
@@ -93,7 +88,7 @@ abstract contract BaseUpgradeable is Initializable, UUPSUpgradeable {
         if (!governance().hasRole(role_, account_)) revert Base__Unauthorized();
     }
 
-    function __updateGovernance(IGovernanceV2 governance_) private {
+    function __updateGovernance(IGovernance governance_) private {
         assembly {
             sstore(_governance.slot, governance_)
         }
