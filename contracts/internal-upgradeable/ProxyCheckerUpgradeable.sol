@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.1;
 
-import "oz-custom/contracts/oz-upgradeable/utils/ContextUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 
 error ProxyChecker__ProxyNotAllowed();
 error ProxyChecker__OnlyProxyAllowed();

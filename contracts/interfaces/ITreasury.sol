@@ -3,7 +3,7 @@ pragma solidity ^0.8.15;
 
 import "../internal-upgradeable/interfaces/IWithdrawableUpgradeable.sol";
 
-import "oz-custom/contracts/oz-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
 interface ITreasuryV2 is IWithdrawableUpgradeable {
     // error Treasury__Expired();

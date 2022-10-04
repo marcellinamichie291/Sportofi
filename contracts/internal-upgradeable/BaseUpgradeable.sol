@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.15;
 
-import "oz-custom/contracts/oz-upgradeable/utils/ContextUpgradeable.sol";
-import "oz-custom/contracts/oz-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 import "../interfaces/IGovernance.sol";
 
@@ -15,7 +16,7 @@ error Base__Unauthorized();
 error Base__AuthorizeFailed();
 error Base__UserIsBlacklisted();
 
-abstract contract BaseUpgradeable is ContextUpgradeable, UUPSUpgradeable {
+abstract contract BaseUpgradeable is Initializable, UUPSUpgradeable {
     bytes32 private _governance;
 
     event GovernanceUpdated(

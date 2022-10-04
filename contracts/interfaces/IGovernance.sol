@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.15;
 
-import "oz-custom/contracts/oz-upgradeable/access/IAccessControlEnumerableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/IAccessControlEnumerableUpgradeable.sol";
 
 import "../internal-upgradeable/interfaces/IBlacklistableUpgradeable.sol";
 

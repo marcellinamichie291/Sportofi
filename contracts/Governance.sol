@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.15;
 
-import "oz-custom/contracts/oz-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "oz-custom/contracts/oz-upgradeable/security/PausableUpgradeable.sol";
-import "oz-custom/contracts/oz-upgradeable/access/AccessControlEnumerableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlEnumerableUpgradeable.sol";
 
 import "./internal-upgradeable/ProxyCheckerUpgradeable.sol";
 import "./internal-upgradeable/BlacklistableUpgradeable.sol";
 
 import "./libraries/Roles.sol";
-import "oz-custom/contracts/libraries/EnumerableSetV2.sol";
+import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 
 import "./interfaces/IGovernance.sol";
 
@@ -21,7 +21,7 @@ contract GovernanceUpgradeable is
     BlacklistableUpgradeable,
     AccessControlEnumerableUpgradeable
 {
-    using EnumerableSetV2 for EnumerableSetV2.AddressSet;
+    using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
 
     bytes32 public constant VERSION =
         0xcab5b167ada4badb5ce0ed5f16a74aee744ece5365888dc008eb82537ed584dc;

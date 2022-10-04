@@ -2,13 +2,13 @@
 pragma solidity ^0.8.15;
 
 import "oz-custom/contracts/internal-upgradeable/SignableUpgradeable.sol";
-import "oz-custom/contracts/oz-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
 import "./internal-upgradeable/BaseUpgradeable.sol";
 import "./internal-upgradeable/ProxyCheckerUpgradeable.sol";
 import "./internal-upgradeable/WithdrawableUpgradeable.sol";
 
-import "oz-custom/contracts/libraries/EnumerableSetV2.sol";
+import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 
 import "./interfaces/ITreasury.sol";
 
@@ -21,7 +21,7 @@ contract TreasuryUpgradeable is
     ReentrancyGuardUpgradeable
 {
     using Bytes32Address for address;
-    using EnumerableSetV2 for EnumerableSetV2.AddressSet;
+    using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
 
     ///@dev value is equal to keccak256("Treasury_v2")
     bytes32 public constant VERSION =
@@ -111,7 +111,7 @@ contract TreasuryUpgradeable is
     ) external whenPaused onlyRole(Roles.TREASURER_ROLE) {
         uint256 length = tokens_.length;
         // if (length != prices_.length) revert Treasury__LengthMismatch();
-        require (length == prices_.length, "Length mistmatch"); 
+        require(length == prices_.length, "Length mistmatch");
         bytes32[] memory tokens;
         {
             address[] memory _tokens;
