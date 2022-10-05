@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.15;
+pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
@@ -30,6 +30,7 @@ contract GovernanceUpgradeable is
         __Pausable_init();
 
         address sender = _msgSender();
+
         _grantRole(Roles.PAUSER_ROLE, sender);
         _grantRole(Roles.OPERATOR_ROLE, sender);
         _grantRole(Roles.UPGRADER_ROLE, sender);
