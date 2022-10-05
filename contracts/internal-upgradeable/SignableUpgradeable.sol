@@ -31,27 +31,22 @@ abstract contract SignableUpgradeable is
     }
 
     function _verify(
-        address sender_,
         address verifier_,
         bytes32 structHash_,
         bytes calldata signature_
     ) internal view virtual {
-        _checkVerifier(
-            sender_,
-            verifier_,
-            _hashTypedDataV4(structHash_),
-            signature_
-        );
+        _checkVerifier(verifier_, _hashTypedDataV4(structHash_), signature_);
     }
 
     function _checkVerifier(
-        address sender_,
         address verifier_,
         bytes32 digest_,
         bytes calldata signature_
     ) internal view virtual {
-        if (_recoverSigner(digest_, signature_) != verifier_)
-            revert Signable__InvalidSignature(sender_);
+        require(
+            _recoverSigner(digest_, signature_) == verifier_,
+            "SIGNABLE: INVALID_SIGNATURE"
+        );
     }
 
     function _recoverSigner(bytes32 structHash_, bytes calldata signature_)

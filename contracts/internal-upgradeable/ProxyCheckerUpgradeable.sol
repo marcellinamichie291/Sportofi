@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.1;
+pragma solidity ^0.8.15;
 
 import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
-
-error ProxyChecker__ProxyNotAllowed();
-error ProxyChecker__OnlyProxyAllowed();
 
 abstract contract ProxyCheckerUpgradeable is ContextUpgradeable {
     modifier onlyEOA() {
@@ -21,18 +18,24 @@ abstract contract ProxyCheckerUpgradeable is ContextUpgradeable {
     }
 
     function _onlyEOA(address msgSender_, address txOrigin_) internal view {
-        if (_isProxyCall(msgSender_, txOrigin_) || _isProxy(msgSender_))
-            revert ProxyChecker__ProxyNotAllowed();
+        require(
+            !_isProxyCall(msgSender_, txOrigin_) && !_isProxy(msgSender_),
+            "PROXY_CHECKER: PROXY_UNALLOWED"
+        );
     }
 
     function _onlyProxy(address sender_) internal view {
-        if (!_isProxyCall(sender_, _txOrigin()) && !_isProxy(sender_))
-            revert ProxyChecker__OnlyProxyAllowed();
+        require(
+            _isProxyCall(sender_, _txOrigin()) || _isProxy(sender_),
+            "PROXY_CHECKER: EOA_UNALLOWED"
+        );
     }
 
     function _onlyProxy(address msgSender_, address txOrigin_) internal view {
-        if (!_isProxyCall(msgSender_, txOrigin_) && !_isProxy(msgSender_))
-            revert ProxyChecker__OnlyProxyAllowed();
+        require(
+            _isProxyCall(msgSender_, txOrigin_) || _isProxy(msgSender_),
+            "PROXY_CHECKER: EOA_UNALLOWED"
+        );
     }
 
     function _isProxyCall(address msgSender_, address txOrigin_)

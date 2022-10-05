@@ -7,13 +7,6 @@ import "../interfaces/IGovernance.sol";
 
 import "../libraries/Roles.sol";
 
-error Base__Paused();
-error Base__Unpaused();
-error Base__AlreadySet();
-error Base__Unauthorized();
-error Base__AuthorizeFailed();
-error Base__UserIsBlacklisted();
-
 abstract contract BaseUpgradeable is ContextUpgradeable, UUPSUpgradeable {
     bytes32 private _governance;
 
@@ -44,7 +37,7 @@ abstract contract BaseUpgradeable is ContextUpgradeable, UUPSUpgradeable {
         onlyRole(Roles.OPERATOR_ROLE)
     {
         IGovernance old = governance();
-        if (old == governance_) revert Base__AlreadySet();
+        require(old != governance_, "BASE: ALREADY_SET");
         __updateGovernance(governance_);
         emit GovernanceUpdated(old, governance_);
     }
@@ -73,19 +66,18 @@ abstract contract BaseUpgradeable is ContextUpgradeable, UUPSUpgradeable {
                     role_
                 )
             );
-            if (!ok) revert Base__AuthorizeFailed();
+            require(ok, "BASE: REQUEST_FAILED");
         }
 
         __updateGovernance(governance_);
     }
 
     function _checkBlacklist(address account_) internal view {
-        if (governance().isBlacklisted(account_))
-            revert Base__UserIsBlacklisted();
+        require(!governance().isBlacklisted(account_), "BASE: BLACKLISTED");
     }
 
     function _checkRole(bytes32 role_, address account_) internal view {
-        if (!governance().hasRole(role_, account_)) revert Base__Unauthorized();
+        require(governance().hasRole(role_, account_), "BASE: UNAUTHORIZED");
     }
 
     function __updateGovernance(IGovernance governance_) private {
@@ -95,11 +87,11 @@ abstract contract BaseUpgradeable is ContextUpgradeable, UUPSUpgradeable {
     }
 
     function _requirePaused() internal view {
-        if (!governance().paused()) revert Base__Unpaused();
+        require(governance().paused(), "BASE: NOT_PAUSED");
     }
 
     function _requireNotPaused() internal view {
-        if (governance().paused()) revert Base__Paused();
+        require(!governance().paused(), "BASE: PAUSED");
     }
 
     function _authorizeUpgrade(address implement_)

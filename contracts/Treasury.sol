@@ -23,13 +23,13 @@ contract TreasuryUpgradeable is
     using Bytes32Address for address;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
 
-    ///@dev value is equal to keccak256("Treasury_v2")
+    ///@dev value is equal to keccak256("Treasury_v1")
     bytes32 public constant VERSION =
-        0x48c79cba00677850a648b537b2558198a45e7f81d7643207ace134fa238f149f;
+        0xea88ed743f2d0583b98ad2b145c450d84d46c8e4d6425d9e0c7cd0e4930fce2f;
 
-    ///@dev value is equal to keccak256("Permit(address token,address to,uint256 amount,uint256 nonce,uint256 deadline)")
-    bytes32 private constant _PERMIT_TYPE_HASH =
-        0xe18b1420a8866bed17ce7f2984deaf7e4fe41b94563dd0768b8376b6bdca6b64;
+    ///@dev value is equal to keccak256("Permit(address token,address to,uint256 amount,uint256 deadline,uint256 nonce)")
+    bytes32 private constant __PERMIT_TYPE_HASH =
+        0x984451e1880855a56058ebd6b0f6c8dd534f21c83a8dedad93ab0e57c6c84c7a;
 
     EnumerableSetUpgradeable.AddressSet private _payments;
 
@@ -58,29 +58,31 @@ contract TreasuryUpgradeable is
         IERC20Upgradeable token_,
         address to_,
         uint256 amount_,
-        address signer_,
         uint256 deadline_,
         bytes calldata signature_
     ) external nonReentrant whenNotPaused {
         _onlyEOA(to_);
         _checkBlacklist(to_);
-        _checkRole(Roles.SIGNER_ROLE, signer_);
 
-        // if (block.timestamp > deadline_) revert Treasury__Expired();
-        require(block.timestamp <= deadline_, "Expired Time");
-        _verify(
-            _msgSender(),
-            signer_,
-            keccak256(
-                abi.encode(
-                    _PERMIT_TYPE_HASH,
-                    token_,
-                    to_,
-                    _useNonce(to_),
-                    deadline_
+        require(block.timestamp <= deadline_, "TREASURY: EXPIRED");
+        require(
+            _hasRole(
+                Roles.SIGNER_ROLE,
+                _recoverSigner(
+                    keccak256(
+                        abi.encode(
+                            __PERMIT_TYPE_HASH,
+                            token_,
+                            to_,
+                            amount_,
+                            deadline_,
+                            _useNonce(to_)
+                        )
+                    ),
+                    signature_
                 )
             ),
-            signature_
+            "TREASURY: INVALID_SIGNATURE"
         );
 
         _safeTransfer(token_, to_, amount_);

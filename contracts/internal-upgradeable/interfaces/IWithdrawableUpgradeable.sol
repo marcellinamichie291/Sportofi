@@ -4,8 +4,6 @@ pragma solidity ^0.8.15;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
 interface IWithdrawableUpgradeable {
-    error Withdrawable__Expired();
-
     event Withdrawn(
         IERC20Upgradeable indexed token,
         address indexed to,

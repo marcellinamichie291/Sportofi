@@ -145,10 +145,10 @@ contract Bet2WinUpgradeable is
         emit BetPlaced(user, matchId, side, odd, gameId);
     }
 
-    function settleBet(uint256 gameId_, uint256 matchId_) external {
-        address user = _msgSender();
-        Bet memory bet = _userBets[user][(gameId_ << 128) | matchId_];
-    }
+    // function settleBet(uint256 gameId_, uint256 matchId_) external {
+    //     address user = _msgSender();
+    //     Bet memory bet = _userBets[user][(gameId_ << 128) | matchId_];
+    // }
 
     function updateTreasury(ITreasury treasury_)
         external

@@ -5,9 +5,6 @@ pragma solidity >=0.8.0;
 /// @author Solmate (https://github.com/Rari-Capital/solmate/blob/main/src/utils/SSTORE2.sol)
 /// @author Modified from 0xSequence (https://github.com/0xSequence/sstore2/blob/master/contracts/SSTORE2.sol)
 library SSTORE2 {
-    error SSTORE2_DEPLOYMENT_FAILED();
-    error SSTORE2_READ_OUT_OF_BOUNDS();
-
     // We skip the first byte as it's a STOP opcode to ensure the contract can't be called.
     uint256 internal constant DATA_OFFSET = 1;
 
@@ -55,9 +52,6 @@ library SSTORE2 {
             mstore(data, originalDataLength)
         }
 
-        if (pointer == address(0)) {
-            revert SSTORE2_DEPLOYMENT_FAILED();
-        }
         assembly {
             ptr := pointer
         }
@@ -104,10 +98,7 @@ library SSTORE2 {
             // Restore original length of the variable size `data`
             mstore(data, originalDataLength)
         }
-
-        if (pointer == address(0)) {
-            revert SSTORE2_DEPLOYMENT_FAILED();
-        }
+        require(pointer != address(0), "SSTORE2: DEPLOYMENT_FAILED");
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -157,9 +148,7 @@ library SSTORE2 {
         start += DATA_OFFSET;
         end += DATA_OFFSET;
 
-        if (pointer.code.length < end) {
-            revert SSTORE2_READ_OUT_OF_BOUNDS();
-        }
+        require(pointer.code.length >= end, "SSTORE2: READ_OUT_OF_BOUND");
 
         return readBytecode(pointer, start, end - start);
     }
