@@ -14,7 +14,6 @@ import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeCastUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/structs/BitMapsUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-IERC20PermitUpgradeable.sol";
 
 contract Bet2WinUpgradeable is
@@ -29,8 +28,6 @@ contract Bet2WinUpgradeable is
     using SafeCastUpgradeable for uint256;
     using BitMapsUpgradeable for BitMapsUpgradeable.BitMap;
     using CountersUpgradeable for CountersUpgradeable.Counter;
-    //using EnumerableSetUpgradeable for EnumerableSetUpgradeable.UintSet;
-    //using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
 
     ///@dev value is equal to keccak256("Bet2Win_v1")
     bytes32 public constant VERSION =
@@ -57,26 +54,18 @@ contract Bet2WinUpgradeable is
     IERC20Upgradeable public immutable token;
     AggregatorV3Interface public immutable priceFeed;
 
-    BitMapsUpgradeable.BitMap private __paidReceipts;
-    //EnumerableSetUpgradeable.UintSet private __gameIds;
-    //EnumerableSetUpgradeable.AddressSet private __users;
-    uint48[] private __gameIds;
+    uint8[] private __gameIds;
     address[] private __users;
+    mapping(uint256 => uint48[]) private __matchIds;
+
+    BitMapsUpgradeable.BitMap private __paidReceipts;
 
     //gambler => referree
     mapping(address => address) public referrals;
     //gambler => key(matchId, gameId) => Bet
     mapping(address => mapping(uint256 => Bet)) private __bets;
-
-    // //key(matchId, gameId) => amountsBetted
-    // mapping(uint256 => uint256) private __lockedInBets;
     //key(matchId, gameId) => status => sideInFavor
     mapping(uint256 => mapping(uint256 => uint256)) private __resolves;
-    // //key(matchId, gameId) => number of gamblers
-    // mapping(uint256 => CountersUpgradeable.Counter) private __gamblerPools;
-    //gameId => matchIds
-    //mapping(uint256 => EnumerableSetUpgradeable.UintSet) private __matchIds;
-    mapping(uint256 => uint48[]) private __matchIds;
 
     constructor(
         IGovernance governance_,
@@ -139,7 +128,7 @@ contract Bet2WinUpgradeable is
         _requireNotPaused();
 
         require(
-            amount_ >= MINIMUM_SIZE && amount_ <= MAXIMUM_SIZE,
+            amount_ > MINIMUM_SIZE && amount_ < MAXIMUM_SIZE,
             "BET2WIN: AMOUNT_OUT_OF_BOUNDS"
         );
 
@@ -192,18 +181,18 @@ contract Bet2WinUpgradeable is
 
         (
             uint256 id,
-            uint64 odd,
-            uint8 settleStatus,
-            uint8 side
+            uint48 odd,
+            uint48 settleStatus,
+            uint48 side
         ) = __decodeBetId(betId_);
         emit BetPlaced(user, id, side, settleStatus, odd);
 
         require(side != 0 && odd < MAXIMUM_ODD, "BET2WIN: INVALID_ARGUMENT");
         ///@dev get rid of stack too deep
         {
-            (uint48 gameId, uint48 matchId) = __decodeKey(id);
+            uint8 gameId = uint8(id >> 48);
             __gameIds.push(gameId);
-            __matchIds[gameId].push(matchId);
+            __matchIds[gameId].push(uint48(id));
         }
 
         require(__bets[user][id].amount == 0, "BET2WIN: ALREADY_PLACED_BET");
@@ -212,7 +201,7 @@ contract Bet2WinUpgradeable is
             side,
             odd,
             amount_,
-            address(paymentToken_)
+            address(paymentToken_) == address(0) ? 2 : 1
         );
     }
 
@@ -246,19 +235,19 @@ contract Bet2WinUpgradeable is
             ? remainOdd - REFERAL_PERCENT
             : remainOdd;
         uint256 amount = bet.amount;
-        if (bet.payment == address(0)) {
+        if (bet.isNativePayment == 2) {
             (, int256 usdPrice, , , ) = priceFeed.latestRoundData();
             amount *= uint256(usdPrice) / 1 ether;
         }
-            _safeTransfer(
-                token,
-                user,
-                amount.mulDiv(
-                    leverage,
-                    PERCENTAGE_FRACTION,
-                    MathUpgradeable.Rounding.Down
-                )
-            );
+        _safeTransfer(
+            token,
+            user,
+            amount.mulDiv(
+                leverage,
+                PERCENTAGE_FRACTION,
+                MathUpgradeable.Rounding.Down
+            )
+        );
         if (referree != address(0))
             _safeTransfer(
                 token,
@@ -286,22 +275,6 @@ contract Bet2WinUpgradeable is
         return __users;
     }
 
-    // function lockedInBets(uint256 gameId_, uint256 matchId_)
-    //     external
-    //     view
-    //     returns (uint256)
-    // {
-    //     return __lockedInBets[key(gameId_, matchId_)];
-    // }
-
-    // function gamblerPool(uint256 gameId_, uint256 matchId_)
-    //     external
-    //     view
-    //     returns (uint256)
-    // {
-    //     return __gamblerPools[key(gameId_, matchId_)].current();
-    // }
-
     function betOf(
         address gambler_,
         uint256 gameId_,
@@ -318,7 +291,7 @@ contract Bet2WinUpgradeable is
         return __matchIds[gameId_];
     }
 
-    function gameIds() external view returns (uint48[] memory) {
+    function gameIds() external view returns (uint8[] memory) {
         return __gameIds;
     }
 
@@ -350,24 +323,15 @@ contract Bet2WinUpgradeable is
         pure
         returns (
             uint256 id,
-            uint64 odd,
-            uint8 settleStatus,
-            uint8 side
+            uint48 odd,
+            uint48 settleStatus,
+            uint48 side
         )
     {
         id = key(betId_ >> 192, (betId_ >> 144) & ~uint48(0));
-        odd = uint64((betId_ >> 96) & ~uint48(0));
-        settleStatus = uint8(betId_ >> 48);
-        side = uint8(betId_);
-    }
-
-    function __decodeKey(uint256 id_)
-        private
-        pure
-        returns (uint48 gameId, uint48 matchId)
-    {
-        gameId = uint48(id_ >> 48);
-        matchId = uint48(id_);
+        odd = uint48(betId_ >> 96);
+        settleStatus = uint48(betId_ >> 48);
+        side = uint48(betId_);
     }
 
     function __receiptOf(
@@ -387,5 +351,5 @@ contract Bet2WinUpgradeable is
         require(block.timestamp < deadline_, "BET2WIN: EXPIRED_DEADLINE");
     }
 
-    uint256[41] private __gap;
+    uint256[43] private __gap;
 }

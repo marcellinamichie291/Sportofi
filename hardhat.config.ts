@@ -3,6 +3,15 @@ import "@openzeppelin/hardhat-upgrades";
 import * as dotenv from "dotenv";
 import "hardhat-contract-sizer";
 import { HardhatUserConfig } from "hardhat/config";
+const {subtask} = require("hardhat/config");
+const {TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS} = require("hardhat/builtin-tasks/task-names")
+
+subtask(TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS)
+  .setAction(async (_: any, __: any, runSuper: () => any) => {
+    const paths = await runSuper();
+
+    return paths.filter((p: string) => !p.endsWith(".t.sol"));
+  });
 
 dotenv.config();
 

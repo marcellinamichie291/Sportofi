@@ -87,7 +87,7 @@ abstract contract TransferableUpgradeable is Initializable {
         virtual
     {
         __checkValidTransfer(to_, amount_);
-        require(__nativeTransfer(to_, amount_), "TRANSFERABLE: NATIVE_TRANFER_FAILED");
+        require(__nativeTransfer(to_, amount_), "TRANSFERABLE: TRANFER_FAILED");
     }
 
     function __nativeTransfer(address to_, uint256 amount_)

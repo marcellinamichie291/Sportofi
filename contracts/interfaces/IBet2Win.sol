@@ -6,38 +6,12 @@ import "../internal-upgradeable/interfaces/IFundForwarderUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
 interface IBet2Win is ISignableUpgradeable, IFundForwarderUpgradeable {
-    enum Status {
-        STATUS_TBD,
-        STATUS_FINAL,
-        STATUS_FORFEIT,
-        STATUS_DELAYED,
-        STATUS_HALFTIME,
-        STATUS_CANCELED, // refund
-        STATUS_FINAL_PEN,
-        STATUS_SCHEDULED,
-        STATUS_ABANDONED, // refund
-        STATUS_FULL_TIME,
-        STATUS_POSTPONED,
-        STATUS_PRE_FIGHT,
-        STATUS_RAIN_DELAY,
-        STATUS_FIRST_HALF,
-        STATUS_END_PERIOD,
-        STATUS_SECOND_HALF,
-        STATUS_IN_PROGRESS,
-        STATUS_UNCONTESTED,
-        STATUS_END_OF_FIGHT,
-        STATUS_END_OF_ROUND,
-        STATUS_IN_PROGRESS_2,
-        STATUS_FIGHTERS_WALKING,
-        STATUS_FIGHTERS_INTRODUCTION
-    }
-
     struct Bet {
-        uint8 settleStatus;
-        uint8 side;
-        uint64 odd;
+        uint48 settleStatus;
+        uint48 side;
+        uint48 odd;
         uint96 amount;
-        address payment;
+        uint16 isNativePayment;
     }
 
     event ReceiptPaid(
@@ -103,7 +77,7 @@ interface IBet2Win is ISignableUpgradeable, IFundForwarderUpgradeable {
         view
         returns (uint48[] memory);
 
-    function gameIds() external view returns (uint48[] memory);
+    function gameIds() external view returns (uint8[] memory);
 
     function betIdOf(
         uint256 gameId_,

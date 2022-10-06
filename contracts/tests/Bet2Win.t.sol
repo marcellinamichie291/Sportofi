@@ -137,7 +137,7 @@ contract Bet2WinTest is Test {
             deadline: deadline,
             paymentToken: address(pmToken)
         });
-        
+
         vm.prank(gambler, gambler);
         house.placeBet{value: amount}(
             betId,
