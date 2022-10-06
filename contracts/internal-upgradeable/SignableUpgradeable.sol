@@ -67,23 +67,6 @@ abstract contract SignableUpgradeable is
         return _nonces[sender_.fillLast12Bytes()];
     }
 
-    function _splitSignature(bytes calldata signature_)
-        internal
-        pure
-        virtual
-        returns (
-            bytes32 r,
-            bytes32 s,
-            uint8 v
-        )
-    {
-        assembly {
-            r := calldataload(signature_.offset)
-            s := calldataload(add(signature_.offset, 0x20))
-            v := byte(0, calldataload(add(signature_.offset, 0x40)))
-        }
-    }
-
     function DOMAIN_SEPARATOR()
         external
         view

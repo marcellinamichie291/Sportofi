@@ -20,4 +20,18 @@ interface ITreasury is IWithdrawableUpgradeable {
         external
         view
         returns (bool);
+
+    function withdraw(
+        IERC20Upgradeable token_,
+        address to_,
+        uint256 amount_,
+        uint256 deadline_,
+        bytes calldata signature_
+    ) external;
+
+    function payments() external view returns (address[] memory);
+
+    function updatePayments(IERC20Upgradeable[] calldata tokens_) external;
+
+    function removePayment(address token_) external;
 }

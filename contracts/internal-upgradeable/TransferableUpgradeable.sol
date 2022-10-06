@@ -18,8 +18,7 @@ abstract contract TransferableUpgradeable is Initializable {
         address to_,
         uint256 value_
     ) internal virtual {
-        if (value_ == 0 || to_ == address(0))
-            revert Transferable__InvalidArguments();
+        __checkValidTransfer(to_, value_);
         bool success;
         if (address(token_) == address(0))
             success = __nativeTransfer(to_, value_);
@@ -45,7 +44,7 @@ abstract contract TransferableUpgradeable is Initializable {
             }
         }
 
-        if (!success) revert Transferable__TransferFailed();
+        require(success, "TRANSFERABLE: TRANSFER_FAILED");
     }
 
     function _safeTransfer(
@@ -53,9 +52,7 @@ abstract contract TransferableUpgradeable is Initializable {
         address to_,
         uint256 value_
     ) internal virtual {
-        if (value_ == 0 || to_ == address(0))
-            revert Transferable__InvalidArguments();
-
+        __checkValidTransfer(to_, value_);
         bool success;
         if (address(token_) == address(0))
             success = __nativeTransfer(to_, value_);
@@ -82,15 +79,15 @@ abstract contract TransferableUpgradeable is Initializable {
             }
         }
 
-        if (!success) revert Transferable__TransferFailed();
+        require(success, "TRANSFERABLE: TRANSFER_FAILED");
     }
 
     function _safeNativeTransfer(address to_, uint256 amount_)
         internal
         virtual
     {
-        if (!__nativeTransfer(to_, amount_))
-            revert Transferable__TransferFailed();
+        __checkValidTransfer(to_, amount_);
+        require(__nativeTransfer(to_, amount_), "TRANSFERABLE: NATIVE_TRANFER_FAILED");
     }
 
     function __nativeTransfer(address to_, uint256 amount_)
@@ -102,10 +99,12 @@ abstract contract TransferableUpgradeable is Initializable {
         }
     }
 
-    /**
-     * @dev This empty reserved space is put in place to allow future versions to add new
-     * variables without shifting down storage in the inheritance chain.
-     * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
-     */
+    function __checkValidTransfer(address to_, uint256 value_) private view {
+        require(
+            value_ != 0 && to_ != address(0) && to_ != address(this),
+            "TRANSFERABLE: INVALID_ARGUMENTS"
+        );
+    }
+
     uint256[50] private __gap;
 }

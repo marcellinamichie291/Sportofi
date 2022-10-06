@@ -80,7 +80,7 @@ abstract contract BaseUpgradeable is ContextUpgradeable, UUPSUpgradeable {
         require(governance().hasRole(role_, account_), "BASE: UNAUTHORIZED");
     }
 
-    function __updateGovernance(IGovernance governance_) private {
+    function __updateGovernance(IGovernance governance_) internal {
         assembly {
             sstore(_governance.slot, governance_)
         }

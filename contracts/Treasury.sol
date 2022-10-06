@@ -33,6 +33,10 @@ contract TreasuryUpgradeable is
 
     EnumerableSetUpgradeable.AddressSet private _payments;
 
+    constructor(IGovernance governance_) initializer {
+        __updateGovernance(governance_);
+    }
+
     function init(IGovernance governance_) external initializer {
         __Base_init(governance_, 0);
         __ReentrancyGuard_init();
@@ -92,7 +96,6 @@ contract TreasuryUpgradeable is
 
     function updatePayments(IERC20Upgradeable[] calldata tokens_)
         external
-        whenPaused
         onlyRole(Roles.TREASURER_ROLE)
     {
         address[] memory tokens;

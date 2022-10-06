@@ -26,6 +26,20 @@ contract GovernanceUpgradeable is
     bytes32 public constant VERSION =
         0xcab5b167ada4badb5ce0ed5f16a74aee744ece5365888dc008eb82537ed584dc;
 
+    constructor() initializer {
+        address sender = _msgSender();
+
+        _grantRole(Roles.PAUSER_ROLE, sender);
+        _grantRole(Roles.OPERATOR_ROLE, sender);
+        _grantRole(Roles.UPGRADER_ROLE, sender);
+        _grantRole(Roles.TREASURER_ROLE, sender);
+        _grantRole(DEFAULT_ADMIN_ROLE, sender);
+
+        _setRoleAdmin(Roles.OPERATOR_ROLE, Roles.SIGNER_ROLE);
+        _setRoleAdmin(Roles.OPERATOR_ROLE, Roles.PAUSER_ROLE);
+        _setRoleAdmin(Roles.OPERATOR_ROLE, Roles.TREASURER_ROLE);
+    }
+
     function init() external initializer {
         __Pausable_init();
 
