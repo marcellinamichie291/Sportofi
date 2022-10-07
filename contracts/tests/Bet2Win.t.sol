@@ -1,48 +1,51 @@
 //SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
+pragma solidity 0.8.17;
 
 import "forge-std/Vm.sol";
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 
-import "../Bet2Win.sol";
-import "../Treasury.sol";
-import "../Governance.sol";
+import "./Bet2WinMock.t.sol";
+import "./TreasuryMock.t.sol";
+import "./AuthorityMock.t.sol";
 
-import "./TestHelper.sol";
-import {IGToken, GToken, IPMToken, PMToken} from "./ERC20.sol";
-import {AggregatorV3Interface, PriceFeed} from "./PriceFeed.sol";
-import {ERC20PermitHelper, Bet2WinPermitHelper} from "./SigUtils.sol";
+import "./TestHelper.t.sol";
+import {IGToken, GToken, IPMToken, PMToken} from "./ERC20.t.sol";
+import {AggregatorV3Interface, PriceFeed} from "./PriceFeed.t.sol";
+import {ERC20PermitHelper, Bet2WinPermitHelper} from "./SigUtils.t.sol";
 
 import "../interfaces/IBet2Win.sol";
 import "../interfaces/ITreasury.sol";
-import "../interfaces/IGovernance.sol";
+import "../interfaces/IAuthority.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-IERC20PermitUpgradeable.sol";
 
 contract Bet2WinTest is Test {
-    address admin;
-    address gambler;
+    address public admin;
+    address public alice;
+    address public gambler;
 
-    uint256 adminPk;
-    uint256 gamblerPk;
+    uint256 public adminPk;
+    uint256 public gamblerPk;
 
-    IBet2Win house;
-    ITreasury treasury;
-    IGovernance governance;
+    IBet2Win public house;
+    ITreasury public treasury;
+    IAuthority public authority;
 
-    IGToken gToken;
-    IPMToken pmToken;
+    IGToken public gToken;
+    IPMToken public pmToken;
 
-    ERC20PermitHelper tokenSigUtil;
-    Bet2WinPermitHelper houseSigUtil;
+    ERC20PermitHelper public tokenSigUtil;
+    Bet2WinPermitHelper public houseSigUtil;
 
-    CheatCodes cheats = CheatCodes(HEVM_ADDRESS);
+    CheatCodes public cheats = CheatCodes(HEVM_ADDRESS);
 
     constructor() {
         adminPk = 0xA11CE;
         gamblerPk = 0xB0B;
 
+        uint256 alicePk = 0xA11CEB0B;
+        alice = vm.addr(alicePk);
         admin = vm.addr(adminPk);
         gambler = vm.addr(gamblerPk);
 
@@ -52,13 +55,13 @@ contract Bet2WinTest is Test {
         vm.startPrank(admin, admin);
 
         gToken = IGToken(address(new GToken("SPORTOFI", "SPORT")));
-        governance = IGovernance(address(new GovernanceUpgradeable()));
-        treasury = ITreasury(address(new TreasuryUpgradeable(governance)));
+        authority = IAuthority(address(new AuthorityMock()));
+        treasury = ITreasury(address(new TreasuryMock(authority)));
 
         house = IBet2Win(
             address(
-                new Bet2WinUpgradeable(
-                    governance,
+                new Bet2WinMock(
+                    authority,
                     treasury,
                     IERC20Upgradeable(address(gToken)),
                     AggregatorV3Interface(address(new PriceFeed()))
@@ -81,13 +84,14 @@ contract Bet2WinTest is Test {
         vm.startPrank(admin, admin);
 
         gToken.mint(address(house), 1_000_000);
-        assertTrue(governance.hasRole(Roles.TREASURER_ROLE, admin));
+        assertTrue(authority.hasRole(Roles.TREASURER_ROLE, admin));
         IERC20Upgradeable[] memory arr = new IERC20Upgradeable[](2);
         arr[0] = IERC20Upgradeable(address(0));
         arr[1] = IERC20Upgradeable(address(pmToken));
         treasury.updatePayments(arr);
-        assertTrue(governance.hasRole(Roles.OPERATOR_ROLE, admin));
-        governance.grantRole(Roles.SIGNER_ROLE, admin);
+        assertTrue(authority.hasRole(Roles.OPERATOR_ROLE, admin));
+        authority.grantRole(Roles.SIGNER_ROLE, admin);
+        authority.grantRole(Roles.CROUPIER_ROLE, admin);
 
         vm.stopPrank();
     }
@@ -99,7 +103,7 @@ contract Bet2WinTest is Test {
         (uint256 betId, , bytes memory signature) = __createValidBetOrder({
             gameId: 0,
             matchId: 1,
-            odd: 345,
+            odd: 34500,
             settleStatus: 6,
             side: 7,
             amount: amount,
@@ -123,6 +127,47 @@ contract Bet2WinTest is Test {
         assertEq(address(treasury).balance, amount);
     }
 
+    function testValidSettleBetNative() public {
+        testValidBetNativePayment();
+
+        vm.startPrank(admin);
+
+        house.resolveMatch(0, 1, 6, 7);
+        //house.addReferree(gambler, alice);
+        vm.stopPrank();
+
+        uint256 balanceBefore = gToken.balanceOf(gambler);
+        vm.prank(gambler);
+        house.settleBet(0, 1, 6);
+        uint256 balanceAfter = gToken.balanceOf(gambler);
+
+        uint256 received = balanceAfter - balanceBefore;
+        console.logUint(received);
+        assertTrue(received != 0);
+
+        console.log(gToken.balanceOf(alice));
+    }
+
+    function testValidSettleBetERC20() public {
+        testValidBetERC20Payment();
+
+        vm.startPrank(admin);
+        house.resolveMatch(0, 1, 6, 7);
+        //house.addReferree(gambler, alice);
+        vm.stopPrank();
+
+        uint256 balanceBefore = gToken.balanceOf(gambler);
+        vm.prank(gambler);
+        house.settleBet(0, 1, 6);
+        uint256 balanceAfter = gToken.balanceOf(gambler);
+
+        uint256 received = balanceAfter - balanceBefore;
+        console.logUint(received);
+        assertTrue(received != 0);
+
+        console.logUint(gToken.balanceOf(alice));
+    }
+
     function testValidBetERC20Payment() public {
         uint96 amount = 25 ether;
         uint256 deadline = block.timestamp + 5 minutes;
@@ -130,7 +175,7 @@ contract Bet2WinTest is Test {
         (uint256 betId, , bytes memory signature) = __createValidBetOrder({
             gameId: 0,
             matchId: 1,
-            odd: 345,
+            odd: 34500,
             settleStatus: 6,
             side: 7,
             amount: amount,

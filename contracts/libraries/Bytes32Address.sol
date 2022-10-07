@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
+pragma solidity 0.8.17;
 
 library Bytes32Address {
     function fromFirst20Bytes(bytes32 bytesValue)
@@ -7,6 +7,7 @@ library Bytes32Address {
         pure
         returns (address addr)
     {
+        /// @solidity memory-safe-assembly
         assembly {
             addr := bytesValue
         }
@@ -17,6 +18,7 @@ library Bytes32Address {
         pure
         returns (bytes32 value)
     {
+        /// @solidity memory-safe-assembly
         assembly {
             value := addressValue
         }
@@ -27,6 +29,7 @@ library Bytes32Address {
         pure
         returns (address addr)
     {
+        /// @solidity memory-safe-assembly
         assembly {
             addr := uintValue
         }
@@ -37,6 +40,7 @@ library Bytes32Address {
         pure
         returns (uint256 value)
     {
+        /// @solidity memory-safe-assembly
         assembly {
             value := addressValue
         }
@@ -47,6 +51,7 @@ library Bytes32Address {
         pure
         returns (address addr)
     {
+        /// @solidity memory-safe-assembly
         assembly {
             addr := shr(0x60, uintValue)
         }
@@ -57,6 +62,7 @@ library Bytes32Address {
         pure
         returns (uint256 value)
     {
+        /// @solidity memory-safe-assembly
         assembly {
             value := shl(0x60, addressValue)
         }

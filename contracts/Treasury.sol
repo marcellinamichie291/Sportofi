@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
+pragma solidity 0.8.17;
 
 import "./internal-upgradeable/SignableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
@@ -12,7 +12,7 @@ import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeab
 
 import "./interfaces/ITreasury.sol";
 
-contract TreasuryUpgradeable is
+contract Treasury is
     ITreasury,
     BaseUpgradeable,
     SignableUpgradeable,
@@ -23,24 +23,25 @@ contract TreasuryUpgradeable is
     using Bytes32Address for address;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
 
-    ///@dev value is equal to keccak256("Treasury_v1")
+    /// @dev value is equal to keccak256("Treasury_v1")
     bytes32 public constant VERSION =
         0xea88ed743f2d0583b98ad2b145c450d84d46c8e4d6425d9e0c7cd0e4930fce2f;
 
-    ///@dev value is equal to keccak256("Permit(address token,address to,uint256 amount,uint256 deadline,uint256 nonce)")
+    /// @dev value is equal to keccak256("Permit(address token,address to,uint256 amount,uint256 deadline,uint256 nonce)")
     bytes32 private constant __PERMIT_TYPE_HASH =
         0x984451e1880855a56058ebd6b0f6c8dd534f21c83a8dedad93ab0e57c6c84c7a;
 
     EnumerableSetUpgradeable.AddressSet private _payments;
 
-    constructor(IGovernance governance_) initializer {
-        __updateGovernance(governance_);
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() payable {
+        _disableInitializers();
     }
 
-    function init(IGovernance governance_) external initializer {
-        __Base_init(governance_, 0);
+    function initialize(IAuthority authority_) external initializer {
+        __Base_init(authority_, 0);
         __ReentrancyGuard_init();
-        __EIP712_init(type(TreasuryUpgradeable).name, "2");
+        __EIP712_init(type(Treasury).name, "2");
     }
 
     function withdraw(

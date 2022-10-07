@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
+pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts-upgradeable/access/IAccessControlEnumerableUpgradeable.sol";
 
 import "../internal-upgradeable/interfaces/IBlacklistableUpgradeable.sol";
 
-interface IGovernance is
+interface IAuthority is
     IBlacklistableUpgradeable,
     IAccessControlEnumerableUpgradeable
 {

@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
+pragma solidity 0.8.17;
 import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-import "../interfaces/IGovernance.sol";
+import "../interfaces/IAuthority.sol";
 
 import "../libraries/Roles.sol";
 
 abstract contract BaseUpgradeable is ContextUpgradeable, UUPSUpgradeable {
-    bytes32 private _governance;
+    bytes32 private _authority;
 
-    event GovernanceUpdated(IGovernance indexed from, IGovernance indexed to);
+    event AuthorityUpdated(IAuthority indexed from, IAuthority indexed to);
 
     modifier onlyRole(bytes32 role) {
         _checkRole(role, _msgSender());
@@ -32,66 +32,59 @@ abstract contract BaseUpgradeable is ContextUpgradeable, UUPSUpgradeable {
         _;
     }
 
-    function updateGovernance(IGovernance governance_)
+    function updateAuthority(IAuthority authority_)
         external
         onlyRole(Roles.OPERATOR_ROLE)
     {
-        IGovernance old = governance();
-        require(old != governance_, "BASE: ALREADY_SET");
-        __updateGovernance(governance_);
-        emit GovernanceUpdated(old, governance_);
+        IAuthority old = authority();
+        require(old != authority_, "BASE: ALREADY_SET");
+        __updateAuthority(authority_);
+        emit AuthorityUpdated(old, authority_);
     }
 
-    function governance() public view returns (IGovernance governance_) {
+    function authority() public view returns (IAuthority authority_) {
+        /// @solidity memory-safe-assembly
         assembly {
-            governance_ := sload(_governance.slot)
+            authority_ := sload(_authority.slot)
         }
     }
 
-    function __Base_init(IGovernance governance_, bytes32 role_)
+    function __Base_init(IAuthority authority_, bytes32 role_)
         internal
         onlyInitializing
     {
-        __Base_init_unchained(governance_, role_);
+        __Base_init_unchained(authority_, role_);
     }
 
-    function __Base_init_unchained(IGovernance governance_, bytes32 role_)
+    function __Base_init_unchained(IAuthority authority_, bytes32 role_)
         internal
         onlyInitializing
     {
-        if (role_ != 0) {
-            (bool ok, ) = address(governance_).call(
-                abi.encodeWithSelector(
-                    IGovernance.requestAccess.selector,
-                    role_
-                )
-            );
-            require(ok, "BASE: REQUEST_FAILED");
-        }
-
-        __updateGovernance(governance_);
+        if (role_ != 0) authority_.requestAccess(role_);
+        __updateAuthority(authority_);
     }
 
     function _checkBlacklist(address account_) internal view {
-        require(!governance().isBlacklisted(account_), "BASE: BLACKLISTED");
+        require(!authority().isBlacklisted(account_), "BASE: BLACKLISTED");
     }
 
     function _checkRole(bytes32 role_, address account_) internal view {
-        require(governance().hasRole(role_, account_), "BASE: UNAUTHORIZED");
+        require(authority().hasRole(role_, account_), "BASE: UNAUTHORIZED");
     }
 
-    function __updateGovernance(IGovernance governance_) internal {
+    function __updateAuthority(IAuthority authority_) internal {
+        /// @solidity memory-safe-assembly
         assembly {
-            sstore(_governance.slot, governance_)
+            sstore(_authority.slot, authority_)
         }
     }
 
     function _requirePaused() internal view {
-        require(governance().paused(), "BASE: NOT_PAUSED");
+        require(authority().paused(), "BASE: NOT_PAUSED");
     }
 
     function _requireNotPaused() internal view {
-        require(!governance().paused(), "BASE: PAUSED");
+        require(!authority().paused(), "BASE: PAUSED");
     }
 
     function _authorizeUpgrade(address implement_)
@@ -106,7 +99,7 @@ abstract contract BaseUpgradeable is ContextUpgradeable, UUPSUpgradeable {
         view
         returns (bool)
     {
-        return governance().hasRole(role_, account_);
+        return authority().hasRole(role_, account_);
     }
 
     uint256[49] private __gap;

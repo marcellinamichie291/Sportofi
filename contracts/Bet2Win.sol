@@ -1,5 +1,7 @@
 //SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
+pragma solidity 0.8.17;
+
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
 import "./internal-upgradeable/BaseUpgradeable.sol";
 import "./internal-upgradeable/SignableUpgradeable.sol";
@@ -8,7 +10,6 @@ import "./internal-upgradeable/TransferableUpgradeable.sol";
 import "./internal-upgradeable/FundForwarderUpgradeable.sol";
 
 import "./interfaces/IBet2Win.sol";
-import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
@@ -16,20 +17,24 @@ import "@openzeppelin/contracts-upgradeable/utils/math/SafeCastUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/structs/BitMapsUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-IERC20PermitUpgradeable.sol";
 
-contract Bet2WinUpgradeable is
+import "./libraries/Array.sol";
+
+contract Bet2Win is
     BaseUpgradeable,
     SignableUpgradeable,
     ProxyCheckerUpgradeable,
     TransferableUpgradeable,
     FundForwarderUpgradeable,
-    IBet2Win
+    IBet2Win,
+    ReentrancyGuardUpgradeable
 {
+    using Array for uint256[];
     using MathUpgradeable for uint256;
     using SafeCastUpgradeable for uint256;
     using BitMapsUpgradeable for BitMapsUpgradeable.BitMap;
     using CountersUpgradeable for CountersUpgradeable.Counter;
 
-    ///@dev value is equal to keccak256("Bet2Win_v1")
+    /// @dev value is equal to keccak256("Bet2Win_v1")
     bytes32 public constant VERSION =
         0xabde44f121d3d3a0bf9cd3c0b366523a0245d2c5d7fbb7f38526cd42d522e6af;
 
@@ -38,21 +43,16 @@ contract Bet2WinUpgradeable is
 
     uint256 public constant MINIMUM_SIZE = 1 ether;
     uint256 public constant MAXIMUM_SIZE = 50 ether;
+    /// @dev odds can be up to 10x
     uint256 public constant MAXIMUM_ODD = 1000_000;
     uint256 public constant PERCENTAGE_FRACTION = 10_000;
 
-    // IERC20Upgradeable public constant REWARD_TOKEN =
-    //     IERC20Upgradeable(0x7976950DdCC0B7b3Ac0d9bCd77CABD0a2662CaDB);
-
-    ///@dev value is equal to keccak256("Permit(address user,uint256 betId,uint256 amount,address paymentToken,uint256 deadline,uint256 nonce)")
+    /// @dev value is equal to keccak256("Permit(address user,uint256 betId,uint256 amount,address paymentToken,uint256 deadline,uint256 nonce)")
     bytes32 private constant __PERMIT_TYPE_HASH =
         0xe5e51ef2e78cfc0f352bab62ce7f0638fbc905821e660a187064efd4453c4e22;
 
-    string private constant __AMOUNT_OUT_OF_BOUNDS =
-        "BET2WIN: AMOUNT_OUT_OF_BOUNDS";
-
-    IERC20Upgradeable public immutable token;
-    AggregatorV3Interface public immutable priceFeed;
+    IERC20Upgradeable public rewardToken;
+    AggregatorV3Interface public priceFeed;
 
     uint8[] private __gameIds;
     address[] private __users;
@@ -60,36 +60,33 @@ contract Bet2WinUpgradeable is
 
     BitMapsUpgradeable.BitMap private __paidReceipts;
 
-    //gambler => referree
+    //  gambler => referree
     mapping(address => address) public referrals;
-    //gambler => key(matchId, gameId) => Bet
+    //  gambler => key(matchId, gameId) => Bet
     mapping(address => mapping(uint256 => Bet)) private __bets;
-    //key(matchId, gameId) => status => sideInFavor
+    //  key(matchId, gameId) => status => sideInFavor
     mapping(uint256 => mapping(uint256 => uint256)) private __resolves;
 
-    constructor(
-        IGovernance governance_,
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() payable {
+        _disableInitializers();
+    }
+
+    /// @inheritdoc IBet2Win
+    function initialize(
+        IAuthority authority_,
         ITreasury treasury_,
-        IERC20Upgradeable token_,
+        IERC20Upgradeable rewardToken_,
         AggregatorV3Interface priceFeed_
-    ) initializer {
-        token = token_;
+    ) external override initializer {
         priceFeed = priceFeed_;
-        __updateGovernance(governance_);
-        _updateTreasury(treasury_);
-
-        governance().requestAccess(Roles.TREASURER_ROLE);
-        //_disableInitializers();
-    }
-
-    function initialize(IGovernance governance_, ITreasury treasury_)
-        external
-        initializer
-    {
-        __Base_init(governance_, Roles.TREASURER_ROLE);
+        rewardToken = rewardToken_;
+        __ReentrancyGuard_init();
         __FundForwarder_init(treasury_);
+        __Base_init(authority_, Roles.TREASURER_ROLE);
     }
 
+    /// @inheritdoc IBet2Win
     function addReferree(address user_, address referree_)
         external
         onlyRole(Roles.CROUPIER_ROLE)
@@ -102,6 +99,7 @@ contract Bet2WinUpgradeable is
         emit ReferreeAdded(user_, referree_);
     }
 
+    /// @inheritdoc IBet2Win
     function resolveMatch(
         uint256 gameId_,
         uint256 matchId_,
@@ -114,6 +112,7 @@ contract Bet2WinUpgradeable is
         emit MatchResolved(gameId_, matchId_, status_);
     }
 
+    /// @inheritdoc IBet2Win
     function placeBet(
         uint256 betId_,
         uint96 amount_,
@@ -168,13 +167,15 @@ contract Bet2WinUpgradeable is
             );
             if (v != 0) {
                 __checkDeadline(permitDeadline_);
-                (bool ok, ) = address(paymentToken_).call(
-                    abi.encodeCall(
-                        IERC20PermitUpgradeable.permit,
-                        (user, address(this), amount_, permitDeadline_, v, r, s)
-                    )
+                IERC20PermitUpgradeable(address(paymentToken_)).permit(
+                    user,
+                    address(this),
+                    amount_,
+                    permitDeadline_,
+                    v,
+                    r,
+                    s
                 );
-                require(ok, "BET2WIN: PERMISSION_DENIED");
             }
             _safeTransferFrom(paymentToken_, user, address(_treasury), amount_);
         }
@@ -185,6 +186,7 @@ contract Bet2WinUpgradeable is
             uint48 settleStatus,
             uint48 side
         ) = __decodeBetId(betId_);
+
         emit BetPlaced(user, id, side, settleStatus, odd);
 
         require(side != 0 && odd < MAXIMUM_ODD, "BET2WIN: INVALID_ARGUMENT");
@@ -205,19 +207,18 @@ contract Bet2WinUpgradeable is
         );
     }
 
+    /// @inheritdoc IBet2Win
     function settleBet(
         uint256 gameId_,
         uint256 matchId_,
         uint256 status_
-    ) external {
+    ) external nonReentrant {
         _requireNotPaused();
 
         address user = _msgSender();
         uint256 id = key(gameId_, matchId_);
         Bet memory bet = __bets[user][id];
-        uint256 sideInFavor = __resolves[id][status_];
-        require(sideInFavor != 0, "BET2WIN: UNSETTLED_BET");
-        require(bet.side == sideInFavor, "BET2WIN: INVALID_ARGUMENT");
+        require(bet.side == __resolves[id][status_], "BET2WIN: UNSETTLED_BET");
 
         uint256 receipt = __receiptOf(
             user,
@@ -229,18 +230,18 @@ contract Bet2WinUpgradeable is
         require(!__paidReceipts.get(receipt), "BET2WIN: ALREADY_PAID");
         __paidReceipts.set(receipt);
 
+        uint256 remainOdd = bet.odd - HOUSE_EDGE_PERCENT;
         address referree = referrals[user];
-        uint256 remainOdd = bet.odd - REFERAL_PERCENT - HOUSE_EDGE_PERCENT;
         uint256 leverage = referree != address(0)
             ? remainOdd - REFERAL_PERCENT
             : remainOdd;
         uint256 amount = bet.amount;
         if (bet.isNativePayment == 2) {
             (, int256 usdPrice, , , ) = priceFeed.latestRoundData();
-            amount *= uint256(usdPrice) / 1 ether;
+            amount *= uint256(usdPrice / 1e8);
         }
         _safeTransfer(
-            token,
+            rewardToken,
             user,
             amount.mulDiv(
                 leverage,
@@ -250,7 +251,7 @@ contract Bet2WinUpgradeable is
         );
         if (referree != address(0))
             _safeTransfer(
-                token,
+                rewardToken,
                 referree,
                 amount.mulDiv(
                     REFERAL_PERCENT,
@@ -259,7 +260,7 @@ contract Bet2WinUpgradeable is
                 )
             );
 
-        emit ReceiptPaid(receipt, user, referree);
+        emit BetSettled(receipt, user, referree);
     }
 
     function updateTreasury(ITreasury treasury_)
@@ -271,10 +272,21 @@ contract Bet2WinUpgradeable is
         _updateTreasury(treasury_);
     }
 
+    /// @inheritdoc IBet2Win
     function users() external view returns (address[] memory) {
-        return __users;
+        uint256[] memory data;
+        assembly ("memory-safe") {
+            data := sload(__users.slot)
+        }
+        data = data.buildSet();
+        address[] memory setUsers = new address[](data.length);
+        assembly ("memory-safe") {
+            setUsers := data
+        }
+        return setUsers;
     }
 
+    /// @inheritdoc IBet2Win
     function betOf(
         address gambler_,
         uint256 gameId_,
@@ -283,26 +295,50 @@ contract Bet2WinUpgradeable is
         return __bets[gambler_][key(gameId_, matchId_)];
     }
 
+    /// @inheritdoc IBet2Win
     function matchesIds(uint256 gameId_)
         external
         view
         returns (uint48[] memory)
     {
-        return __matchIds[gameId_];
+        uint256[] memory data;
+        assembly ("memory-safe") {
+            mstore(0x00, gameId_)
+            mstore(0x20, __matchIds.slot)
+            data := sload(keccak256(0x00, 0x40))
+        }
+        data = data.buildSet();
+        uint48[] memory setMatchIds = new uint48[](data.length);
+        assembly ("memory-safe") {
+            setMatchIds := data
+        }
+        return setMatchIds;
     }
 
+    /// @inheritdoc IBet2Win
     function gameIds() external view returns (uint8[] memory) {
-        return __gameIds;
+        uint256[] memory data;
+        assembly {
+            data := sload(__gameIds.slot)
+        }
+        data = data.buildSet();
+        uint8[] memory setGameIds = new uint8[](data.length);
+        assembly {
+            setGameIds := data
+        }
+        return setGameIds;
     }
 
+    /// @inheritdoc IBet2Win
     function key(uint256 gameId_, uint256 matchId_)
         public
         pure
         returns (uint256)
     {
-        return (gameId_ << 48) | matchId_.toUint48();
+        return (gameId_ << 48) | matchId_;
     }
 
+    /// @inheritdoc IBet2Win
     function betIdOf(
         uint256 gameId_,
         uint256 matchId_,
@@ -341,15 +377,22 @@ contract Bet2WinUpgradeable is
         uint256 side_,
         uint256 settleStatus_
     ) private pure returns (uint256) {
-        return
-            uint256(
-                (keccak256(abi.encode(user_, id_, odd_, side_, settleStatus_)))
-            );
+        uint256 digest;
+        assembly ("memory-safe") {
+            let ptr := mload(0x40)
+            mstore(ptr, user_)
+            mstore(add(ptr, 0x20), id_)
+            mstore(add(ptr, 0x40), odd_)
+            mstore(add(ptr, 0x60), side_)
+            mstore(add(ptr, 0x80), settleStatus_)
+            digest := keccak256(ptr, 0xa0)
+        }
+        return digest;
     }
 
     function __checkDeadline(uint256 deadline_) private view {
         require(block.timestamp < deadline_, "BET2WIN: EXPIRED_DEADLINE");
     }
 
-    uint256[43] private __gap;
+    uint256[41] private __gap;
 }
