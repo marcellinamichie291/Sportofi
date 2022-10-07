@@ -1,4 +1,3 @@
-import * as dotenv from "dotenv";
 import { Contract, ContractFactory } from "ethers";
 import { ethers, upgrades } from "hardhat";
 

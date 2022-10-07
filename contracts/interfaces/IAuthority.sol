@@ -11,6 +11,8 @@ interface IAuthority is
 {
     event ProxyAccessGranted(address indexed proxy);
 
+    function setRoleAdmin(bytes32 role, bytes32 adminRole) external;
+
     function pause() external;
 
     function unpause() external;

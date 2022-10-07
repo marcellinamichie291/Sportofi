@@ -5,6 +5,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlEnumerableUpgradeable.sol";
 
+import "./internal-upgradeable/FundForwarderUpgradeable.sol";
 import "./internal-upgradeable/ProxyCheckerUpgradeable.sol";
 import "./internal-upgradeable/BlacklistableUpgradeable.sol";
 
@@ -19,7 +20,8 @@ contract Authority is
     PausableUpgradeable,
     ProxyCheckerUpgradeable,
     BlacklistableUpgradeable,
-    AccessControlEnumerableUpgradeable
+    AccessControlEnumerableUpgradeable,
+    FundForwarderUpgradeable
 {
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
 
@@ -47,6 +49,13 @@ contract Authority is
         _setRoleAdmin(Roles.OPERATOR_ROLE, Roles.TREASURER_ROLE);
     }
 
+    function setRoleAdmin(bytes32 role, bytes32 adminRole)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        _setRoleAdmin(role, adminRole);
+    }
+
     function requestAccess(bytes32 role) external override whenNotPaused {
         address origin = _txOrigin();
         _checkRole(Roles.OPERATOR_ROLE, origin);
@@ -66,6 +75,15 @@ contract Authority is
 
     function unpause() external override onlyRole(Roles.PAUSER_ROLE) {
         _unpause();
+    }
+
+    function updateTreasury(ITreasury treasury_)
+        external
+        override
+        onlyRole(Roles.OPERATOR_ROLE)
+    {
+        emit TreasuryUpdated(treasury(), treasury_);
+        _updateTreasury(treasury_);
     }
 
     function paused()
