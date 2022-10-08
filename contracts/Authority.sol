@@ -23,8 +23,6 @@ contract Authority is
     AccessControlEnumerableUpgradeable,
     FundForwarderUpgradeable
 {
-    using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
-
     /// @dev value is equal to keccak256("Authority_v1")
     bytes32 public constant VERSION =
         0x095dd5e04e0f3f5bce98e4ee904d9f7209827187c4201f036596b2f7fdd602e7;
@@ -39,14 +37,16 @@ contract Authority is
 
         address sender = _msgSender();
 
+        _grantRole(DEFAULT_ADMIN_ROLE, sender);
         _grantRole(Roles.PAUSER_ROLE, sender);
+        _grantRole(Roles.CROUPIER_ROLE, sender);
         _grantRole(Roles.OPERATOR_ROLE, sender);
         _grantRole(Roles.UPGRADER_ROLE, sender);
         _grantRole(Roles.TREASURER_ROLE, sender);
-        _grantRole(DEFAULT_ADMIN_ROLE, sender);
 
-        _setRoleAdmin(Roles.OPERATOR_ROLE, Roles.PAUSER_ROLE);
-        _setRoleAdmin(Roles.OPERATOR_ROLE, Roles.TREASURER_ROLE);
+        _setRoleAdmin(Roles.PAUSER_ROLE, Roles.OPERATOR_ROLE);
+        _setRoleAdmin(Roles.CROUPIER_ROLE, Roles.OPERATOR_ROLE);
+        _setRoleAdmin(Roles.TREASURER_ROLE, Roles.OPERATOR_ROLE);
     }
 
     function setRoleAdmin(bytes32 role, bytes32 adminRole)
@@ -112,4 +112,6 @@ contract Authority is
         override
         onlyRole(Roles.UPGRADER_ROLE)
     {}
+
+    uint256[50] private __gap;
 }

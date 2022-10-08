@@ -4,9 +4,6 @@ pragma solidity 0.8.17;
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
-error Transferable__TransferFailed();
-error Transferable__InvalidArguments();
-
 abstract contract TransferableUpgradeable is Initializable {
     function __Transferable_init() internal onlyInitializing {}
 

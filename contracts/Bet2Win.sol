@@ -275,12 +275,12 @@ contract Bet2Win is
     /// @inheritdoc IBet2Win
     function users() external view returns (address[] memory) {
         uint256[] memory data;
-        assembly ("memory-safe") {
+        assembly {
             data := sload(__users.slot)
         }
         data = data.buildSet();
         address[] memory setUsers = new address[](data.length);
-        assembly ("memory-safe") {
+        assembly {
             setUsers := data
         }
         return setUsers;
@@ -302,14 +302,14 @@ contract Bet2Win is
         returns (uint48[] memory)
     {
         uint256[] memory data;
-        assembly ("memory-safe") {
+        assembly {
             mstore(0x00, gameId_)
             mstore(0x20, __matchIds.slot)
             data := sload(keccak256(0x00, 0x40))
         }
         data = data.buildSet();
         uint48[] memory setMatchIds = new uint48[](data.length);
-        assembly ("memory-safe") {
+        assembly {
             setMatchIds := data
         }
         return setMatchIds;
@@ -378,7 +378,7 @@ contract Bet2Win is
         uint256 settleStatus_
     ) private pure returns (uint256) {
         uint256 digest;
-        assembly ("memory-safe") {
+        assembly {
             let ptr := mload(0x40)
             mstore(ptr, user_)
             mstore(add(ptr, 0x20), id_)
