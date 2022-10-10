@@ -11,7 +11,6 @@ import "./internal-upgradeable/FundForwarderUpgradeable.sol";
 
 import "./interfaces/IBet2Win.sol";
 
-import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeCastUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/structs/BitMapsUpgradeable.sol";
@@ -29,10 +28,10 @@ contract Bet2Win is
     ReentrancyGuardUpgradeable
 {
     using Array for uint256[];
+    using Bytes32Address for address;
     using MathUpgradeable for uint256;
     using SafeCastUpgradeable for uint256;
     using BitMapsUpgradeable for BitMapsUpgradeable.BitMap;
-    using CountersUpgradeable for CountersUpgradeable.Counter;
 
     /// @dev value is equal to keccak256("Bet2Win_v1")
     bytes32 public constant VERSION =
@@ -66,6 +65,8 @@ contract Bet2Win is
     mapping(address => mapping(uint256 => Bet)) private __bets;
     //  key(matchId, gameId) => status => sideInFavor
     mapping(uint256 => mapping(uint256 => uint256)) private __resolves;
+
+    bytes32[] private __userList;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() payable {
@@ -123,22 +124,19 @@ contract Bet2Win is
         bytes32 s,
         IERC20Upgradeable paymentToken_,
         bytes calldata croupierSignature_
-    ) external payable {
-        _requireNotPaused();
-
+    ) external payable whenNotPaused {
         require(
             amount_ > MINIMUM_SIZE && amount_ < MAXIMUM_SIZE,
             "BET2WIN: AMOUNT_OUT_OF_BOUNDS"
         );
 
         address user = _msgSender();
-        __users.push(user);
+        __userList.push(user.fillLast12Bytes());
         ///@dev get rid of stack too deep
         {
             _checkBlacklist(user);
             _onlyEOA(user);
 
-            __checkDeadline(croupierDeadline_);
             require(
                 _hasRole(
                     Roles.SIGNER_ROLE,
@@ -150,7 +148,9 @@ contract Bet2Win is
                                 betId_,
                                 amount_,
                                 paymentToken_,
-                                croupierDeadline_,
+                                block.timestamp > croupierDeadline_
+                                    ? block.timestamp
+                                    : croupierDeadline_,
                                 _useNonce(user)
                             )
                         ),
@@ -166,12 +166,13 @@ contract Bet2Win is
                 "BET2WIN: UNSUPPORTED_PAYMENT"
             );
             if (v != 0) {
-                __checkDeadline(permitDeadline_);
                 IERC20PermitUpgradeable(address(paymentToken_)).permit(
                     user,
                     address(this),
                     amount_,
-                    permitDeadline_,
+                    block.timestamp > permitDeadline_
+                        ? block.timestamp
+                        : permitDeadline_,
                     v,
                     r,
                     s
@@ -229,19 +230,22 @@ contract Bet2Win is
         );
         require(!__paidReceipts.get(receipt), "BET2WIN: ALREADY_PAID");
         __paidReceipts.set(receipt);
-
-        uint256 remainOdd = bet.odd - HOUSE_EDGE_PERCENT;
         address referree = referrals[user];
-        uint256 leverage = referree != address(0)
-            ? remainOdd - REFERAL_PERCENT
-            : remainOdd;
+        emit BetSettled(receipt, user, referree);
+
+        uint256 leverage = referree == address(0)
+            ? bet.odd - HOUSE_EDGE_PERCENT
+            : bet.odd - HOUSE_EDGE_PERCENT - REFERAL_PERCENT;
         uint256 amount = bet.amount;
         if (bet.isNativePayment == 2) {
             (, int256 usdPrice, , , ) = priceFeed.latestRoundData();
             amount *= uint256(usdPrice / 1e8);
         }
+
+        /// @dev caching to save gas if has referree
+        IERC20Upgradeable _rewardToken = rewardToken;
         _safeTransfer(
-            rewardToken,
+            _rewardToken,
             user,
             amount.mulDiv(
                 leverage,
@@ -251,7 +255,7 @@ contract Bet2Win is
         );
         if (referree != address(0))
             _safeTransfer(
-                rewardToken,
+                _rewardToken,
                 referree,
                 amount.mulDiv(
                     REFERAL_PERCENT,
@@ -259,8 +263,6 @@ contract Bet2Win is
                     MathUpgradeable.Rounding.Down
                 )
             );
-
-        emit BetSettled(receipt, user, referree);
     }
 
     function updateTreasury(ITreasury treasury_)
@@ -276,7 +278,7 @@ contract Bet2Win is
     function users() external view returns (address[] memory) {
         uint256[] memory data;
         assembly {
-            data := sload(__users.slot)
+            data := sload(__userList.slot)
         }
         data = data.buildSet();
         address[] memory setUsers = new address[](data.length);
@@ -364,10 +366,12 @@ contract Bet2Win is
             uint48 side
         )
     {
+        assembly {
+            odd := shr(96, betId_)
+            settleStatus := shr(48, betId_)
+            side := betId_
+        }
         id = key(betId_ >> 192, (betId_ >> 144) & ~uint48(0));
-        odd = uint48(betId_ >> 96);
-        settleStatus = uint48(betId_ >> 48);
-        side = uint48(betId_);
     }
 
     function __receiptOf(
@@ -390,9 +394,5 @@ contract Bet2Win is
         return digest;
     }
 
-    function __checkDeadline(uint256 deadline_) private view {
-        require(block.timestamp < deadline_, "BET2WIN: EXPIRED_DEADLINE");
-    }
-
-    uint256[41] private __gap;
+    uint256[40] private __gap;
 }

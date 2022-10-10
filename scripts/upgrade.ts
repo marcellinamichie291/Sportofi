@@ -13,13 +13,21 @@ async function main(): Promise<void> {
     // await treasury.deployed();
     // console.log("Treasury upgraded to : ", treasury.address);
 
-    const Authority: ContractFactory = await ethers.getContractFactory("Authority");
-    const authority: Contract = await upgrades.upgradeProxy(
-        process.env.AUTHORITY || "",
-        Authority,
+    // const Authority: ContractFactory = await ethers.getContractFactory("Authority");
+    // const authority: Contract = await upgrades.upgradeProxy(
+    //     process.env.AUTHORITY || "",
+    //     Authority,
+    // );
+    // await authority.deployed();
+    // console.log("Authority upgraded to : ", authority.address);
+
+    const Bet2Win: ContractFactory = await ethers.getContractFactory("Bet2Win");
+    const bet2Win: Contract = await upgrades.upgradeProxy(
+        process.env.BET2WIN || "",
+        Bet2Win,
     );
-    await authority.deployed();
-    console.log("Authority upgraded to : ", authority.address);
+    await bet2Win.deployed();
+    console.log("Bet2Win upgraded to : ", bet2Win.address);
 }
 
 main()

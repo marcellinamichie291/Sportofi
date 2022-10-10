@@ -24,9 +24,9 @@ const config: HardhatUserConfig = {
             },
             optimizer: {
                 enabled: true,
-                runs: 200,
+                runs: 1_000_000,
             },
-            viaIR: true
+            viaIR: false
         },
     },
     etherscan: {
