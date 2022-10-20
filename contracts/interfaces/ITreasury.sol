@@ -6,20 +6,12 @@ import "../internal-upgradeable/interfaces/IWithdrawableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
 interface ITreasury is IWithdrawableUpgradeable {
-    event PaymentsUpdated();
-    event PricesUpdated();
-    event PriceUpdated(
-        IERC20Upgradeable indexed token,
-        uint256 indexed from,
-        uint256 indexed to
-    );
-    event PaymentRemoved(address indexed token);
-    event PaymentsRemoved();
+    event PaymentAdded(IERC20Upgradeable indexed token);
+    event PaymentRemoved(IERC20Upgradeable indexed token);
+    event PaymentsAdded(IERC20Upgradeable[] indexed tokens);
+    event SafeReceived(address indexed from, uint256 value);
 
-    function supportedPayment(IERC20Upgradeable token_)
-        external
-        view
-        returns (bool);
+    function supportedPayment(address token_) external view returns (bool);
 
     function withdraw(
         IERC20Upgradeable token_,
@@ -31,7 +23,7 @@ interface ITreasury is IWithdrawableUpgradeable {
 
     function payments() external view returns (address[] memory);
 
-    function updatePayments(IERC20Upgradeable[] calldata tokens_) external;
+    function addPayments(IERC20Upgradeable[] calldata tokens_) external;
 
-    function removePayment(address token_) external;
+    function removePayment(IERC20Upgradeable token_) external;
 }

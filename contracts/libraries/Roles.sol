@@ -2,6 +2,8 @@
 pragma solidity 0.8.17;
 
 library Roles {
+    bytes32 internal constant FACTORY_ROLE =
+        0xdfbefbf47cfe66b701d8cfdbce1de81c821590819cb07e71cb01b6602fb0ee27;
     bytes32 internal constant CROUPIER_ROLE =
         0xca4ff35aa85b5fefc8312f1391bd040d4b445859a4a611b13d905ef8daa4b19f;
     bytes32 internal constant PROXY_ROLE =

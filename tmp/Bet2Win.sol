@@ -1,46 +1,49 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts/utils/Context.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
-import "./internal-upgradeable/BaseUpgradeable.sol";
-import "./internal-upgradeable/SignableUpgradeable.sol";
-import "./internal-upgradeable/ProxyCheckerUpgradeable.sol";
-import "./internal-upgradeable/TransferableUpgradeable.sol";
-import "./internal-upgradeable/FundForwarderUpgradeable.sol";
+import "./internal/Base.sol";
+import "./internal/Signable.sol";
+import "./internal/ProxyChecker.sol";
+import "./internal/Transferable.sol";
+import "./internal/FundForwarder.sol";
 
 import "./interfaces/IBet2Win.sol";
 
-import "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/math/SafeCastUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/structs/BitMapsUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-IERC20PermitUpgradeable.sol";
+import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import "@openzeppelin/contracts/utils/structs/BitMaps.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/draft-IERC20Permit.sol";
 
 import "./libraries/Array.sol";
+import "./libraries/FixedPointMathLib.sol";
 
 contract Bet2Win is
-    BaseUpgradeable,
-    SignableUpgradeable,
-    ProxyCheckerUpgradeable,
-    TransferableUpgradeable,
-    FundForwarderUpgradeable,
+    Base,
+    Context,
+    Signable,
+    ProxyChecker,
+    Transferable,
+    FundForwarder,
     IBet2Win,
-    ReentrancyGuardUpgradeable
+    ReentrancyGuard
 {
     using Array for uint256[];
+    using SafeCast for uint256;
+    using BitMaps for BitMaps.BitMap;
     using Bytes32Address for address;
-    using MathUpgradeable for uint256;
-    using SafeCastUpgradeable for uint256;
-    using BitMapsUpgradeable for BitMapsUpgradeable.BitMap;
+    using FixedPointMathLib for uint256;
 
-    /// @dev value is equal to keccak256("Bet2Win_v1")
+    /// @dev value is equal to keccak256("Bet2Win_v2")
     bytes32 public constant VERSION =
-        0xabde44f121d3d3a0bf9cd3c0b366523a0245d2c5d7fbb7f38526cd42d522e6af;
+        0x8e3e823de2bb7c24984bbbe5a5f367858a2b2a0e1acc8a6596d09460976a21a4;
 
     uint256 public constant REFERAL_PERCENT = 250;
     uint256 public constant HOUSE_EDGE_PERCENT = 250;
 
-    uint256 public constant MINIMUM_SIZE = 1 ether;
+    uint256 public constant MINIMUM_SIZE = 0.001 ether;
     uint256 public constant MAXIMUM_SIZE = 50 ether;
     /// @dev odds can be up to 10x
     uint256 public constant MAXIMUM_ODD = 1000_000;
@@ -50,14 +53,14 @@ contract Bet2Win is
     bytes32 private constant __PERMIT_TYPE_HASH =
         0xe5e51ef2e78cfc0f352bab62ce7f0638fbc905821e660a187064efd4453c4e22;
 
-    IERC20Upgradeable public rewardToken;
-    AggregatorV3Interface public priceFeed;
+    IERC20 public immutable rewardToken;
+    AggregatorV3Interface public immutable priceFeed;
 
     uint8[] private __gameIds;
     address[] private __users;
     mapping(uint256 => uint48[]) private __matchIds;
 
-    BitMapsUpgradeable.BitMap private __paidReceipts;
+    BitMaps.BitMap private __paidReceipts;
 
     //  gambler => referree
     mapping(address => address) public referrals;
@@ -68,23 +71,23 @@ contract Bet2Win is
 
     bytes32[] private __userList;
 
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() payable {
-        _disableInitializers();
-    }
-
-    /// @inheritdoc IBet2Win
-    function initialize(
+    constructor(
         IAuthority authority_,
         ITreasury treasury_,
-        IERC20Upgradeable rewardToken_,
+        IERC20 rewardToken_,
         AggregatorV3Interface priceFeed_
-    ) external override initializer {
+    )
+        payable
+        FundForwarder(treasury_)
+        Signable(type(Bet2Win).name, "2")
+        Base(authority_, Roles.TREASURER_ROLE)
+    {
         priceFeed = priceFeed_;
         rewardToken = rewardToken_;
-        __ReentrancyGuard_init();
-        __FundForwarder_init(treasury_);
-        __Base_init(authority_, Roles.TREASURER_ROLE);
+    }
+
+    function kill() external onlyRole(Roles.FACTORY_ROLE) {
+        selfdestruct(payable(_msgSender()));
     }
 
     /// @inheritdoc IBet2Win
@@ -93,7 +96,7 @@ contract Bet2Win is
         onlyRole(Roles.CROUPIER_ROLE)
     {
         _checkBlacklist(referree_);
-        _onlyEOA(referree_);
+        require(!_isProxy(referree_), "BET2WIN: PROXY_UNALLOWED");
 
         referrals[user_] = referree_;
 
@@ -122,7 +125,7 @@ contract Bet2Win is
         uint8 v,
         bytes32 r,
         bytes32 s,
-        IERC20Upgradeable paymentToken_,
+        IERC20 paymentToken_,
         bytes calldata croupierSignature_
     ) external payable whenNotPaused {
         require(
@@ -136,7 +139,7 @@ contract Bet2Win is
         {
             _checkBlacklist(user);
             _onlyEOA(user);
-
+            //Permit(address user,uint256 betId,uint256 amount,address paymentToken,uint256 deadline,uint256 nonce)
             require(
                 _hasRole(
                     Roles.SIGNER_ROLE,
@@ -162,11 +165,11 @@ contract Bet2Win is
 
             ITreasury _treasury = treasury();
             require(
-                _treasury.supportedPayment(paymentToken_),
+                _treasury.supportedPayment(address(paymentToken_)),
                 "BET2WIN: UNSUPPORTED_PAYMENT"
             );
             if (v != 0) {
-                IERC20PermitUpgradeable(address(paymentToken_)).permit(
+                IERC20Permit(address(paymentToken_)).permit(
                     user,
                     address(this),
                     amount_,
@@ -179,6 +182,7 @@ contract Bet2Win is
                 );
             }
             _safeTransferFrom(paymentToken_, user, address(_treasury), amount_);
+            if (msg.value != 0) _safeNativeTransfer(user, msg.value);
         }
 
         (
@@ -221,10 +225,11 @@ contract Bet2Win is
         Bet memory bet = __bets[user][id];
         require(bet.side == __resolves[id][status_], "BET2WIN: UNSETTLED_BET");
 
+        uint48 odd = bet.odd;
         uint256 receipt = __receiptOf(
             user,
             id,
-            bet.odd,
+            odd,
             bet.side,
             bet.settleStatus
         );
@@ -234,8 +239,8 @@ contract Bet2Win is
         emit BetSettled(receipt, user, referree);
 
         uint256 leverage = referree == address(0)
-            ? bet.odd - HOUSE_EDGE_PERCENT
-            : bet.odd - HOUSE_EDGE_PERCENT - REFERAL_PERCENT;
+            ? odd - HOUSE_EDGE_PERCENT
+            : odd - HOUSE_EDGE_PERCENT - REFERAL_PERCENT;
         uint256 amount = bet.amount;
         if (bet.isNativePayment == 2) {
             (, int256 usdPrice, , , ) = priceFeed.latestRoundData();
@@ -243,35 +248,54 @@ contract Bet2Win is
         }
 
         /// @dev caching to save gas if has referree
-        IERC20Upgradeable _rewardToken = rewardToken;
+        IERC20 _rewardToken = rewardToken;
         _safeTransfer(
             _rewardToken,
             user,
-            amount.mulDiv(
+            amount.mulDivDown(
                 leverage,
-                PERCENTAGE_FRACTION,
-                MathUpgradeable.Rounding.Down
+                PERCENTAGE_FRACTION
+                //MathUpgradeable.Rounding.Down
             )
         );
         if (referree != address(0))
             _safeTransfer(
                 _rewardToken,
                 referree,
-                amount.mulDiv(
+                amount.mulDivDown(
                     REFERAL_PERCENT,
-                    PERCENTAGE_FRACTION,
-                    MathUpgradeable.Rounding.Down
+                    PERCENTAGE_FRACTION
+                    //MathUpgradeable.Rounding.Down
                 )
             );
     }
 
     function updateTreasury(ITreasury treasury_)
         external
-        override(FundForwarderUpgradeable, IFundForwarderUpgradeable)
+        override(FundForwarder, IFundForwarder)
         onlyRole(Roles.OPERATOR_ROLE)
     {
         emit TreasuryUpdated(treasury(), treasury_);
         _updateTreasury(treasury_);
+    }
+
+    function estimateRewardReceive(
+        address user_,
+        bool isNativePayment_,
+        uint256 betSize_,
+        uint256 odd_
+    ) external view returns (uint256) {
+        address referree = referrals[user_];
+        uint256 leverage = referree == address(0)
+            ? odd_ - HOUSE_EDGE_PERCENT
+            : odd_ - HOUSE_EDGE_PERCENT - REFERAL_PERCENT;
+
+        if (isNativePayment_) {
+            (, int256 usdPrice, , , ) = priceFeed.latestRoundData();
+            betSize_ *= uint256(usdPrice / 1e8);
+        }
+
+        return betSize_.mulDivDown(leverage, PERCENTAGE_FRACTION);
     }
 
     /// @inheritdoc IBet2Win
@@ -393,6 +417,4 @@ contract Bet2Win is
         }
         return digest;
     }
-
-    uint256[40] private __gap;
 }

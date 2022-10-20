@@ -1,4 +1,4 @@
 Bet2WinTest:testValidBetERC20Payment() (gas: 308896)
 Bet2WinTest:testValidBetNativePayment() (gas: 234901)
-Bet2WinTest:testValidSettleBetERC20() (gas: 440106)
-Bet2WinTest:testValidSettleBetNative() (gas: 371842)
+Bet2WinTest:testValidSettleBetERC20() (gas: 439889)
+Bet2WinTest:testValidSettleBetNative() (gas: 371625)

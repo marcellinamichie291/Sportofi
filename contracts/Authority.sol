@@ -38,13 +38,13 @@ contract Authority is
         address sender = _msgSender();
 
         _grantRole(DEFAULT_ADMIN_ROLE, sender);
+
         _grantRole(Roles.PAUSER_ROLE, sender);
         _grantRole(Roles.CROUPIER_ROLE, sender);
         _grantRole(Roles.OPERATOR_ROLE, sender);
         _grantRole(Roles.UPGRADER_ROLE, sender);
         _grantRole(Roles.TREASURER_ROLE, sender);
 
-        _setRoleAdmin(Roles.PAUSER_ROLE, Roles.OPERATOR_ROLE);
         _setRoleAdmin(Roles.CROUPIER_ROLE, Roles.OPERATOR_ROLE);
         _setRoleAdmin(Roles.TREASURER_ROLE, Roles.OPERATOR_ROLE);
     }

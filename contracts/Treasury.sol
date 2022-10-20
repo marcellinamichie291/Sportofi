@@ -32,6 +32,7 @@ contract Treasury is
         0x984451e1880855a56058ebd6b0f6c8dd534f21c83a8dedad93ab0e57c6c84c7a;
 
     EnumerableSetUpgradeable.AddressSet private _payments;
+    EnumerableSetUpgradeable.AddressSet private __payments;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() payable {
@@ -39,8 +40,11 @@ contract Treasury is
     }
 
     function initialize(IAuthority authority_) external initializer {
-        __Base_init(authority_, 0);
+        /// @dev support native payment
+        __addPayment(address(0));
+
         __ReentrancyGuard_init();
+        __Base_init(authority_, 0);
         __EIP712_init(type(Treasury).name, "2");
     }
 
@@ -53,10 +57,8 @@ contract Treasury is
         override(IWithdrawableUpgradeable, WithdrawableUpgradeable)
         onlyRole(Roles.TREASURER_ROLE)
     {
-        if (supportedPayment(token_)) {
-            _safeTransfer(token_, to_, amount_);
-            emit Withdrawn(token_, to_, amount_);
-        }
+        _safeTransfer(token_, to_, amount_);
+        emit Withdrawn(token_, to_, amount_);
     }
 
     function withdraw(
@@ -95,7 +97,7 @@ contract Treasury is
         emit Withdrawn(token_, to_, amount_);
     }
 
-    function updatePayments(IERC20Upgradeable[] calldata tokens_)
+    function addPayments(IERC20Upgradeable[] calldata tokens_)
         external
         onlyRole(Roles.TREASURER_ROLE)
     {
@@ -108,33 +110,41 @@ contract Treasury is
         }
         uint256 length = tokens.length;
         for (uint256 i; i < length; ) {
-            _payments.add(tokens[i]);
+            __addPayment(tokens[i]);
             unchecked {
                 ++i;
             }
         }
 
-        emit PaymentsUpdated();
+        emit PaymentsAdded(tokens_);
     }
 
-    function removePayment(address token_)
+    function addPayment(IERC20Upgradeable token_)
+        external
+        onlyRole(Roles.TREASURER_ROLE)
+    {
+        __addPayment(address(token_));
+
+        emit PaymentAdded(token_);
+    }
+
+    function __addPayment(address token_) private {
+        __payments.add(token_);
+    }
+
+    function removePayment(IERC20Upgradeable token_)
         external
         whenPaused
         onlyRole(Roles.TREASURER_ROLE)
     {
-        if (_payments.remove(token_)) emit PaymentRemoved(token_);
+        if (__payments.remove(address(token_))) emit PaymentRemoved(token_);
     }
 
     function payments() external view returns (address[] memory) {
-        return _payments.values();
+        return __payments.values();
     }
 
-    function supportedPayment(IERC20Upgradeable token_)
-        public
-        view
-        override
-        returns (bool)
-    {
-        return _payments.contains(address(token_));
+    function supportedPayment(address token_) public view returns (bool) {
+        return __payments.contains(token_);
     }
 }

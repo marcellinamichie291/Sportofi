@@ -1,37 +1,24 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
+import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
 
-import "./interfaces/ISignableUpgradeable.sol";
+import "./interfaces/ISignable.sol";
 
 import "../libraries/Bytes32Address.sol";
 
-abstract contract SignableUpgradeable is
-    EIP712Upgradeable,
-    ISignableUpgradeable
-{
+abstract contract Signable is EIP712, ISignable {
+    using ECDSA for bytes32;
     using Bytes32Address for address;
-    using ECDSAUpgradeable for bytes32;
 
     mapping(bytes32 => uint256) internal _nonces;
 
-    function __Signable_init(string memory name, string memory version)
-        internal
-        onlyInitializing
-    {
-        __EIP712_init(name, version);
-    }
+    constructor(string memory name_, string memory version_)
+        payable
+        EIP712(name_, version_)
+    {}
 
-    function __Signable_init_unchained() internal onlyInitializing {}
-
-    function nonces(address sender_)
-        external
-        view
-        virtual
-        override
-        returns (uint256)
-    {
+    function nonces(address sender_) external view returns (uint256) {
         return _nonce(sender_);
     }
 
@@ -72,15 +59,7 @@ abstract contract SignableUpgradeable is
         return _nonces[sender_.fillLast12Bytes()];
     }
 
-    function DOMAIN_SEPARATOR()
-        external
-        view
-        virtual
-        override
-        returns (bytes32)
-    {
+    function DOMAIN_SEPARATOR() external view returns (bytes32) {
         return _domainSeparatorV4();
     }
-
-    uint256[49] private __gap;
 }
