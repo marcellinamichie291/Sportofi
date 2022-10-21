@@ -66,9 +66,11 @@ abstract contract ReferralUpgradeable is Initializable, IReferralUpgradeable {
     function _updateReferrerBonus(address referree_, uint256 amount_) internal {
         uint256 maxDepth = __maxDepth;
         uint16[] memory _levelBonusRates = levelBonusRates;
+        address referrer = referree_;
         for (uint256 i; i < maxDepth; ) {
+            referrer = referrals[referrer];
             unchecked {
-                bonuses[referree_] += amount_.mulDivDown(
+                bonuses[referrer] += amount_.mulDivDown(
                     _levelBonusRates[i],
                     _denominator()
                 );

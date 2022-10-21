@@ -235,7 +235,8 @@ contract Bet2WinUpgradeable is
         uint256 usdSize = payment_.amount;
         {
             uint256 betDetail = __bets[gambler_][id][side];
-            require(odd <= betDetail.odd(), "BET2WIN: INVALID_ODD");
+            if (betDetail != 0)
+                require(odd <= betDetail.odd(), "BET2WIN: INVALID_ODD");
 
             unchecked {
                 if (payment_.token == address(0)) {
@@ -262,7 +263,7 @@ contract Bet2WinUpgradeable is
         __matchIds[gameId].push(matchId);
         __settleStatuses.push(settleStatus);
 
-        emit BetPlaced(gambler_, id, side, settleStatus, odd);
+        emit BetPlaced(gambler_, id, side, settleStatus, odd, usdSize);
     }
 
     function __checkSignature(
@@ -272,7 +273,7 @@ contract Bet2WinUpgradeable is
         uint256 deadline_,
         bytes calldata signature_
     ) private {
-        require(block.timestamp > deadline_, "BET2WIN: EXPIRED");
+        require(block.timestamp < deadline_, "BET2WIN: EXPIRED");
         require(
             _hasRole(
                 Roles.SIGNER_ROLE,

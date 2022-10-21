@@ -69,11 +69,11 @@ contract Authority is
         emit ProxyAccessGranted(sender);
     }
 
-    function pause() external override onlyRole(Roles.PAUSER_ROLE) {
+    function pause() external onlyRole(Roles.PAUSER_ROLE) {
         _pause();
     }
 
-    function unpause() external override onlyRole(Roles.PAUSER_ROLE) {
+    function unpause() external onlyRole(Roles.PAUSER_ROLE) {
         _unpause();
     }
 

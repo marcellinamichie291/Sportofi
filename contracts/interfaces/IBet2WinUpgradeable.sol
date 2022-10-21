@@ -29,7 +29,8 @@ interface IBet2WinUpgradeable is
         uint256 indexed id,
         uint256 indexed side,
         uint256 settleStatus,
-        uint256 odd
+        uint256 odd,
+        uint256 usdAmt
     );
 
     event BetSettled(

@@ -17,22 +17,25 @@ library BetLogic {
         uint256 betData_,
         uint256 scores_
     ) internal pure returns (bool) {
-        uint256 sideInFavorScore = uint8(scores_ >> (side << 3));
-        uint256 sideAgainstScore = uint8(scores_ >> (sideAgainst_ << 3));
+        uint256 sideInFavorScore = (scores_ >> (side << 3)) & ~uint8(0);
+        uint256 sideAgainstScore = (scores_ >> (sideAgainst_ << 3)) & ~uint8(0);
+
+        uint256 sideInFavorResult = (betData_ >> (side << 3)) & ~uint8(0);
+        uint256 sideAgainstResult = (betData_ >> (sideAgainst_ << 3)) &
+            ~uint8(0);
 
         if (betType_ == uint8(BetType.CORRECT_SCORE))
             return
-                (sideAgainstScore << 8) | sideInFavorScore == betData_
-                    ? true
-                    : false;
+                sideAgainstScore == sideAgainstResult &&
+                sideInFavorScore == sideInFavorResult;
         else if (betType_ == uint8(BetType.OVER))
-            return sideInFavorScore >= betData_;
+            return sideInFavorResult >= sideInFavorScore;
         else if (betType_ == uint8(BetType.UNDER))
-            return sideInFavorScore <= betData_;
+            return sideInFavorResult <= sideInFavorScore;
         else if (betType_ == uint8(BetType.WIN))
             return sideInFavorScore > sideAgainstScore;
         else if (betType_ == uint8(BetType.DRAW))
-            return sideInFavorScore == sideAgainstScore;
+            return sideInFavorResult == sideAgainstResult;
 
         return false;
     }
