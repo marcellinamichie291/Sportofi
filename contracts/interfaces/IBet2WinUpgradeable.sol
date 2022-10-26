@@ -14,6 +14,7 @@ interface IBet2WinUpgradeable is
     IFundForwarderUpgradeable
 {
     struct Payment {
+        address referrer;
         uint8 v;
         uint64 deadline;
         uint96 amount;

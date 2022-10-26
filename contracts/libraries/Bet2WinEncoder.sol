@@ -38,7 +38,7 @@ library Encoder {
     }
 
     function odd(uint256 betDetail_) internal pure returns (uint256) {
-        return uint24(betDetail_);
+        return (betDetail_ & ((1 << 17) - 1)) * 100;
     }
 
     function amount(uint256 betDetail_) internal pure returns (uint256) {

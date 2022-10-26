@@ -29,9 +29,9 @@ library BetLogic {
                 sideAgainstScore == sideAgainstResult &&
                 sideInFavorScore == sideInFavorResult;
         else if (betType_ == uint8(BetType.OVER))
-            return sideInFavorResult >= sideInFavorScore;
+            return sideInFavorResult + sideAgainstResult >= sideInFavorScore;
         else if (betType_ == uint8(BetType.UNDER))
-            return sideInFavorResult <= sideInFavorScore;
+            return sideInFavorResult + sideAgainstResult < sideInFavorScore;
         else if (betType_ == uint8(BetType.WIN))
             return sideInFavorScore > sideAgainstScore;
         else if (betType_ == uint8(BetType.DRAW))

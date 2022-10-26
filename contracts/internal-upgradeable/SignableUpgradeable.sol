@@ -20,7 +20,7 @@ abstract contract SignableUpgradeable is
         internal
         onlyInitializing
     {
-        __EIP712_init(name, version);
+        __EIP712_init_unchained(name, version);
     }
 
     function __Signable_init_unchained() internal onlyInitializing {}

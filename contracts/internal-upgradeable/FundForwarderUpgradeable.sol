@@ -21,7 +21,10 @@ abstract contract FundForwarderUpgradeable is
         __FundForwarder_init_unchained(treasury_);
     }
 
-    function __FundForwarder_init_unchained(ITreasury treasury_) internal {
+    function __FundForwarder_init_unchained(ITreasury treasury_)
+        internal
+        onlyInitializing
+    {
         _updateTreasury(treasury_);
     }
 

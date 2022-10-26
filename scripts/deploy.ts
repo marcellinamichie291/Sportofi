@@ -32,7 +32,7 @@ async function main(): Promise<void> {
     const Bet2Win: ContractFactory = await ethers.getContractFactory("Bet2WinUpgradeable");
     const bet2Win: Contract = await upgrades.deployProxy(
         Bet2Win,
-        [3, [5000, 3000, 2000], process.env.AUTHORITY, process.env.TREASURY, "0x31Ea275ca9ED412F80eBC8b7ac705eCe5F263Cb0", process.env.GTOKEN, "0x2514895c72f50D8bd4B4F9b1110F0D6bD2c97526"],
+        [[5000, 3000, 2000], process.env.AUTHORITY, process.env.TREASURY, "0x31Ea275ca9ED412F80eBC8b7ac705eCe5F263Cb0", process.env.GTOKEN, "0x2514895c72f50D8bd4B4F9b1110F0D6bD2c97526"],
         { kind: "uups", initializer: "initialize" },
     );
     await bet2Win.deployed();

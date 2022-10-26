@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-
+import "./ProxyCheckerUpgradeable.sol";
 import "./interfaces/IReferralUpgradeable.sol";
 
 import "../libraries/FixedPointMathLib.sol";
 
-abstract contract ReferralUpgradeable is Initializable, IReferralUpgradeable {
+abstract contract ReferralUpgradeable is
+    ProxyCheckerUpgradeable,
+    IReferralUpgradeable
+{
     using FixedPointMathLib for uint256;
 
     uint256 private __maxDepth;
@@ -17,13 +19,18 @@ abstract contract ReferralUpgradeable is Initializable, IReferralUpgradeable {
     mapping(address => uint256) public bonuses;
     mapping(address => address) public referrals;
 
-    function __Referral_init(
-        uint256 maxDepth_,
-        uint16[] calldata levelBonusRates_
-    ) internal onlyInitializing {
-        uint256 length = levelBonusRates_.length;
-        require(maxDepth_ == length, "REFERRAL: LENGTH_MISMATCH");
+    function __Referral_init(uint16[] calldata levelBonusRates_)
+        internal
+        onlyInitializing
+    {
+        __Referral_init_unchained(levelBonusRates_);
+    }
 
+    function __Referral_init_unchained(uint16[] calldata levelBonusRates_)
+        internal
+        onlyInitializing
+    {
+        uint256 length = levelBonusRates_.length;
         uint256 sum;
         for (uint256 i; i < length; ) {
             unchecked {
@@ -34,31 +41,49 @@ abstract contract ReferralUpgradeable is Initializable, IReferralUpgradeable {
 
         require(sum == _denominator(), "REFERALL: INVALID_ARGUMENTS");
 
-        __maxDepth = maxDepth_;
         levelBonusRates = levelBonusRates_;
     }
 
-    function __Referral_init_unchained() internal onlyInitializing {}
-
     function addReferrer(address referrer_, address referree_) external virtual;
 
+    function referralTree(address referee_)
+        external
+        view
+        returns (address[] memory referrers)
+    {
+        uint256 maxDepth = __maxDepth;
+        referrers = new address[](maxDepth);
+        address referrer = referee_;
+        for (uint256 i; i < maxDepth; ) {
+            if ((referrer = referrals[referrer]) == address(0)) break;
+            referrers[i] = referrer;
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
     function _addReferrer(address referrer_, address referree_) internal {
+        require(!_isProxy(referrer_), "REFERRAL: PROXY_NOT_ALLOWED");
         require(
             referrals[referree_] == address(0),
             "REFERRAL: REFERRER_EXISTED"
         );
+        referrals[referree_] = referrer_;
 
-        address referrer = referrer_;
-        while (referrer != address(0)) {
-            require(referrer != referree_, "REFERRAL: CIRCULAR_REF_UNALLOWED");
+        uint256 level;
+        uint256 maxDepth = __maxDepth;
+        for (uint256 i; i < maxDepth; ) {
+            require(referrer_ != referree_, "REFERRAL: CIRCULAR_REF_UNALLOWED");
 
             unchecked {
-                ++levels[referrer];
+                level = ++levels[referrer_];
+                ++i;
             }
-            referrer = referrals[referrer];
-        }
 
-        referrals[referree_] = referrer_;
+            emit LevelUpdated(referrer_, level);
+            if ((referrer_ = referrals[referrer_]) == address(0)) break;
+        }
 
         emit ReferrerAdded(referree_, referrer_);
     }
@@ -67,12 +92,13 @@ abstract contract ReferralUpgradeable is Initializable, IReferralUpgradeable {
         uint256 maxDepth = __maxDepth;
         uint16[] memory _levelBonusRates = levelBonusRates;
         address referrer = referree_;
+        uint256 denominator = _denominator();
         for (uint256 i; i < maxDepth; ) {
-            referrer = referrals[referrer];
+            if ((referrer = referrals[referrer]) == address(0)) break;
             unchecked {
                 bonuses[referrer] += amount_.mulDivDown(
                     _levelBonusRates[i],
-                    _denominator()
+                    denominator
                 );
                 ++i;
             }

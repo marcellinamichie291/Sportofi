@@ -1,12 +1,9 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-
 import "./internal-upgradeable/BaseUpgradeable.sol";
 import "./internal-upgradeable/ReferralUpgradeable.sol";
 import "./internal-upgradeable/SignableUpgradeable.sol";
-import "./internal-upgradeable/ProxyCheckerUpgradeable.sol";
 import "./internal-upgradeable/TransferableUpgradeable.sol";
 import "./internal-upgradeable/FundForwarderUpgradeable.sol";
 
@@ -26,11 +23,9 @@ contract Bet2WinUpgradeable is
     BaseUpgradeable,
     ReferralUpgradeable,
     SignableUpgradeable,
-    ProxyCheckerUpgradeable,
     TransferableUpgradeable,
     FundForwarderUpgradeable,
-    IBet2WinUpgradeable,
-    ReentrancyGuardUpgradeable
+    IBet2WinUpgradeable
 {
     using Array for uint256[];
     using Encoder for uint256;
@@ -54,9 +49,9 @@ contract Bet2WinUpgradeable is
     uint256 public constant PERCENTAGE_FRACTION = 10_000;
     uint256 public constant WITHDRAWAL_THRESHOLD = 1 ether;
 
-    /// @dev value is equal to keccak256("Permit(address user,uint256 betId,uint256 amount,address paymentToken,uint256 deadline,uint256 nonce)")
+    /// @dev value is equal to keccak256("Permit(address user,address referrer,uint256 betId,uint256 amount,address paymentToken,uint256 deadline,uint256 nonce)")
     bytes32 private constant __PERMIT_TYPE_HASH =
-        0xe5e51ef2e78cfc0f352bab62ce7f0638fbc905821e660a187064efd4453c4e22;
+        0xec561885ee9ae4b4f381365f2074cf03880c53581b096eb22f48087bfda5e58c;
 
     IERC20Upgradeable public rewardToken;
     IUniswapV2Pair public reward2USDPair;
@@ -76,13 +71,7 @@ contract Bet2WinUpgradeable is
     //  gambler => key(matchId, gameId, settleStatus, betType) => (sideAgainst, amount, odd)[32]
     mapping(address => mapping(uint48 => uint128[32])) private __bets;
 
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() payable {
-        _disableInitializers();
-    }
-
     function initialize(
-        uint256 maxDepth_,
         uint16[] calldata levelBonusRates_,
         IAuthority authority_,
         ITreasury treasury_,
@@ -94,11 +83,10 @@ contract Bet2WinUpgradeable is
         rewardToken = rewardToken_;
         reward2USDPair = pair_;
 
-        __ReentrancyGuard_init();
-        __FundForwarder_init(treasury_);
-        __EIP712_init("Bet2Win", "2");
-        __Referral_init(maxDepth_, levelBonusRates_);
-        __Base_init(authority_, Roles.TREASURER_ROLE);
+        __FundForwarder_init_unchained(treasury_);
+        __Signable_init("Bet2Win", "2");
+        __Referral_init_unchained(levelBonusRates_);
+        __Base_init_unchained(authority_, Roles.TREASURER_ROLE);
     }
 
     function withdrawBonus() external {
@@ -140,21 +128,18 @@ contract Bet2WinUpgradeable is
         uint256 deadline_,
         bytes calldata signature_,
         Payment calldata payment_
-    )
-        external
-        payable
-        nonReentrant
-        whenNotPaused
-        returns (bool isNewUserAdded)
-    {
+    ) external payable whenNotPaused returns (bool isNewUserAdded) {
         address gambler = _msgSender();
         _checkBlacklist(gambler);
         _onlyEOA(gambler);
         isNewUserAdded = __users.add(gambler);
 
+        __checkSignature(gambler, betId_, payment_, deadline_, signature_);
         __processPayment(gambler, payment_);
         __processBet(gambler, betId_, payment_);
-        __checkSignature(gambler, betId_, payment_, deadline_, signature_);
+
+        address referrer = payment_.referrer;
+        if (referrer != address(0)) _addReferrer(referrer, gambler);
     }
 
     function settleBet(
@@ -163,7 +148,7 @@ contract Bet2WinUpgradeable is
         uint8 status_,
         uint8 betType_,
         uint8 side_
-    ) external whenNotPaused nonReentrant {
+    ) external whenNotPaused {
         uint256 scores = __resolves[(gameId_ << 24) | matchId_][status_];
         require(scores != 0, "BET2WIN: UNSETTLE_BET");
 
@@ -191,8 +176,6 @@ contract Bet2WinUpgradeable is
         {
             (uint256 res0, uint256 res1, ) = reward2USDPair.getReserves();
             IERC20Upgradeable _rewardToken = rewardToken;
-            res0 *=
-                10**IERC20MetadataUpgradeable(address(_rewardToken)).decimals();
             uint256 referralPercent = REFERRAL_PERCENT;
             uint256 remainOdd = betDetail.odd() -
                 HOUSE_EDGE_PERCENT -
@@ -241,7 +224,7 @@ contract Bet2WinUpgradeable is
             unchecked {
                 if (payment_.token == address(0)) {
                     (, int256 usdUnit, , , ) = native2USD.latestRoundData();
-                    usdSize += betDetail.amount() * uint256(usdUnit / 1e8);
+                    usdSize += (betDetail.amount() * uint256(usdUnit)) / 1e8;
                 } else usdSize += betDetail.amount();
             }
         }
@@ -274,24 +257,20 @@ contract Bet2WinUpgradeable is
         bytes calldata signature_
     ) private {
         require(block.timestamp < deadline_, "BET2WIN: EXPIRED");
+        bytes32 structHash = keccak256(
+            abi.encode(
+                __PERMIT_TYPE_HASH,
+                gambler_,
+                payment_.referrer,
+                betId_,
+                payment_.amount,
+                payment_.token,
+                deadline_,
+                _useNonce(gambler_)
+            )
+        );
         require(
-            _hasRole(
-                Roles.SIGNER_ROLE,
-                _recoverSigner(
-                    keccak256(
-                        abi.encode(
-                            __PERMIT_TYPE_HASH,
-                            gambler_,
-                            betId_,
-                            payment_.amount,
-                            payment_.token,
-                            deadline_,
-                            _useNonce(gambler_)
-                        )
-                    ),
-                    signature_
-                )
-            ),
+            _hasRole(Roles.SIGNER_ROLE, _recoverSigner(structHash, signature_)),
             "BET2WIN: INVALID_SIGNATURE"
         );
     }
