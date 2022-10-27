@@ -109,7 +109,7 @@ contract Bet2WinUpgradeable is
     function addReferrer(address referrer_, address referree_)
         external
         override
-        onlyRole(Roles.CROUPIER_ROLE)
+        onlyRole(Roles.OPERATOR_ROLE)
     {
         _addReferrer(referrer_, referree_);
     }
@@ -138,8 +138,8 @@ contract Bet2WinUpgradeable is
         __processPayment(gambler, payment_);
         __processBet(gambler, betId_, payment_);
 
-        address referrer = payment_.referrer;
-        if (referrer != address(0)) _addReferrer(referrer, gambler);
+        if (payment_.referrer != address(0))
+            _addReferrer(payment_.referrer, gambler);
     }
 
     function settleBet(
