@@ -1,23 +1,43 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Capped.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
+import {
+    ERC20,
+    ERC20Permit
+} from "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
 
-contract GovernanceToken is ERC20Capped, ERC20Burnable, ERC20Permit {
-    constructor(string memory name_, string memory symbol_)
-        ERC20(name_, symbol_)
+import "./internal/Base.sol";
+import "./internal/FundForwarder.sol";
+
+contract GovernanceToken is Base, FundForwarder, ERC20Burnable, ERC20Permit {
+    constructor(
+        string memory name_,
+        string memory symbol_,
+        IAuthority authority_,
+        ITreasury treasury_
+    )
+        payable
         ERC20Permit(name_)
-        ERC20Capped(2_000_000_000 * 10**decimals())
+        Base(authority_, 0)
+        ERC20(name_, symbol_)
+        FundForwarder(treasury_)
     {
         _mint(_msgSender(), 65_400_000 * 10**decimals());
     }
 
-    function _mint(address to_, uint256 amount_)
-        internal
-        override(ERC20, ERC20Capped)
+    function mint(address to_, uint256 amount_)
+        external
+        onlyRole(Roles.OPERATOR_ROLE)
     {
-        ERC20Capped._mint(to_, amount_);
+        _mint(to_, amount_ * 10**decimals());
+    }
+
+    function updateTreasury(ITreasury treasury_) external override {
+        require(address(treasury_) != address(0), "VESTING: ZERO_ADDRESS");
+
+        _updateTreasury(treasury_);
+
+        emit TreasuryUpdated(treasury(), treasury_);
     }
 }

@@ -83,8 +83,8 @@ contract Bet2WinUpgradeable is
         rewardToken = rewardToken_;
         reward2USDPair = pair_;
 
-        __FundForwarder_init_unchained(treasury_);
         __Signable_init("Bet2Win", "2");
+        __FundForwarder_init_unchained(treasury_);
         __Referral_init_unchained(levelBonusRates_);
         __Base_init_unchained(authority_, Roles.TREASURER_ROLE);
     }
