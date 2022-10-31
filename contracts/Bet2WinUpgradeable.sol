@@ -21,11 +21,11 @@ import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeab
 
 contract Bet2WinUpgradeable is
     BaseUpgradeable,
-    IBet2WinUpgradeable,
     ReferralUpgradeable,
     SignableUpgradeable,
     TransferableUpgradeable,
-    FundForwarderUpgradeable
+    FundForwarderUpgradeable,
+    IBet2WinUpgradeable
 {
     using Array for uint256[];
     using Encoder for uint256;
@@ -38,8 +38,8 @@ contract Bet2WinUpgradeable is
         0x8e3e823de2bb7c24984bbbe5a5f367858a2b2a0e1acc8a6596d09460976a21a4;
 
     uint256 public constant MAX_TEAM_SLOTS = 32;
-    uint256 public constant REFERRAL_PERCENT = 250;
-    uint256 public constant HOUSE_EDGE_PERCENT = 250;
+    uint256 public constant REFERRAL_PERCENT = 200;
+    uint256 public constant HOUSE_EDGE_PERCENT = 300;
 
     /// @dev size in USD
     uint256 public constant MINIMUM_SIZE = 5 ether;
@@ -52,7 +52,6 @@ contract Bet2WinUpgradeable is
     /// @dev value is equal to keccak256("Permit(address user,address referrer,uint256 betId,uint256 amount,address paymentToken,uint256 deadline,uint256 nonce)")
     bytes32 private constant __PERMIT_TYPE_HASH =
         0xec561885ee9ae4b4f381365f2074cf03880c53581b096eb22f48087bfda5e58c;
-
     IERC20Upgradeable public rewardToken;
     IUniswapV2Pair public reward2USDPair;
     /// @dev convert native token to USD price
@@ -71,7 +70,10 @@ contract Bet2WinUpgradeable is
     //  gambler => key(matchId, gameId, settleStatus, betType) => (sideAgainst, amount, odd)[32]
     mapping(address => mapping(uint48 => uint128[32])) private __bets;
 
+    address public defaultReferrer;
+
     function initialize(
+        address defaultReferrer_,
         uint16[] calldata levelBonusRates_,
         IAuthority authority_,
         ITreasury treasury_,
@@ -82,11 +84,23 @@ contract Bet2WinUpgradeable is
         native2USD = priceFeed_;
         rewardToken = rewardToken_;
         reward2USDPair = pair_;
+        __updateDefaultReferrer(defaultReferrer_);
 
         __Signable_init("Bet2Win", "2");
         __FundForwarder_init_unchained(treasury_);
         __Referral_init_unchained(levelBonusRates_);
         __Base_init_unchained(authority_, Roles.TREASURER_ROLE);
+    }
+
+    function updateDefaultReferrer(address referrer_)
+        external
+        onlyRole(Roles.OPERATOR_ROLE)
+    {
+        __updateDefaultReferrer(referrer_);
+    }
+
+    function __updateDefaultReferrer(address referrer_) private {
+        defaultReferrer = referrer_;
     }
 
     function withdrawBonus() external {
@@ -114,6 +128,14 @@ contract Bet2WinUpgradeable is
         _addReferrer(referrer_, referree_);
     }
 
+    function updateLevelBonusRates(uint16[] calldata levelBonusRates_)
+        external
+        override
+        onlyRole(Roles.OPERATOR_ROLE)
+    {
+        _updateLevelBonusrates(levelBonusRates_);
+    }
+
     function resolveMatch(
         uint32 gameId_,
         uint24 matchId_,
@@ -138,7 +160,7 @@ contract Bet2WinUpgradeable is
         __processPayment(gambler, payment_);
         __processBet(gambler, betId_, payment_);
 
-        if (payment_.referrer != address(0))
+        if (payment_.referrer != defaultReferrer)
             _addReferrer(payment_.referrer, gambler);
     }
 
@@ -247,6 +269,25 @@ contract Bet2WinUpgradeable is
         __settleStatuses.push(settleStatus);
 
         emit BetPlaced(gambler_, id, side, settleStatus, odd, usdSize);
+    }
+
+    function mockSettelBet(uint256 betSize_, uint256 odd_) external {
+        uint256 received;
+        {
+            address gambler = _msgSender();
+            (uint256 res0, uint256 res1, ) = reward2USDPair.getReserves();
+            IERC20Upgradeable _rewardToken = rewardToken;
+            uint256 referralPercent = REFERRAL_PERCENT;
+            uint256 remainOdd = odd_ - HOUSE_EDGE_PERCENT - referralPercent;
+            uint256 amount = betSize_.mulDivDown(res0, res1);
+            uint256 percentageFraction = PERCENTAGE_FRACTION;
+            received = amount.mulDivDown(remainOdd, percentageFraction);
+            _safeTransfer(_rewardToken, gambler, received);
+            _updateReferrerBonus(
+                gambler,
+                amount.mulDivDown(referralPercent, percentageFraction)
+            );
+        }
     }
 
     function __checkSignature(
@@ -429,5 +470,5 @@ contract Bet2WinUpgradeable is
         return a | b | c | d;
     }
 
-    uint256[39] private __gap;
+    uint256[38] private __gap;
 }

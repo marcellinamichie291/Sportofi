@@ -30,6 +30,12 @@ abstract contract ReferralUpgradeable is
         internal
         onlyInitializing
     {
+        _updateLevelBonusrates(levelBonusRates_);
+    }
+
+    function _updateLevelBonusrates(uint16[] calldata levelBonusRates_)
+        internal
+    {
         uint256 length = levelBonusRates_.length;
         uint256 sum;
         for (uint256 i; i < length; ) {
@@ -44,6 +50,10 @@ abstract contract ReferralUpgradeable is
         levelBonusRates = levelBonusRates_;
     }
 
+    function updateLevelBonusRates(uint16[] calldata levelBonusRates_)
+        external
+        virtual;
+
     function addReferrer(address referrer_, address referree_) external virtual;
 
     function referralTree(address referee_)
@@ -51,7 +61,7 @@ abstract contract ReferralUpgradeable is
         view
         returns (address[] memory referrers)
     {
-        uint256 maxDepth = __maxDepth;
+        uint256 maxDepth = levelBonusRates.length;
         referrers = new address[](maxDepth);
         address referrer = referee_;
         for (uint256 i; i < maxDepth; ) {

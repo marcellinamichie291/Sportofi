@@ -29,14 +29,14 @@ async function main(): Promise<void> {
     // await gToken.deployed();
     // console.log("GovernanceToken deployed to : ", gToken.address);
 
-    const Bet2Win: ContractFactory = await ethers.getContractFactory("Bet2WinUpgradeable");
-    const bet2Win: Contract = await upgrades.deployProxy(
-        Bet2Win,
-        [[5000, 3000, 2000], process.env.AUTHORITY, process.env.TREASURY, "0x31Ea275ca9ED412F80eBC8b7ac705eCe5F263Cb0", process.env.GTOKEN, "0x2514895c72f50D8bd4B4F9b1110F0D6bD2c97526"],
-        { kind: "uups", initializer: "initialize" },
-    );
-    await bet2Win.deployed();
-    console.log("Bet2Win deployed to : ", bet2Win.address);
+    // const Bet2Win: ContractFactory = await ethers.getContractFactory("Bet2WinUpgradeable");
+    // const bet2Win: Contract = await upgrades.deployProxy(
+    //     Bet2Win,
+    //     [[5000, 3000, 2000], process.env.AUTHORITY, process.env.TREASURY, "0x31Ea275ca9ED412F80eBC8b7ac705eCe5F263Cb0", process.env.GTOKEN, "0x2514895c72f50D8bd4B4F9b1110F0D6bD2c97526"],
+    //     { kind: "uups", initializer: "initialize" },
+    // );
+    // await bet2Win.deployed();
+    // console.log("Bet2Win deployed to : ", bet2Win.address);
 
     // const HouseDeployer: ContractFactory = await ethers.getContractFactory("HouseDeployer");
     // const houseDeployer: Contract = await upgrades.deployProxy(
@@ -46,6 +46,16 @@ async function main(): Promise<void> {
     // );
     // await houseDeployer.deployed();
     // console.log("HouseDeployer deployed to : ", houseDeployer.address);
+
+    // const Vesting: ContractFactory = await ethers.getContractFactory("VestingSchedule")
+    // const vesting: Contract = await Vesting.deploy()
+
+    const PMToken: ContractFactory = await ethers.getContractFactory("PMToken")
+    const pmToken: Contract = await PMToken.deploy("PaymentToken", "PMT")
+    await pmToken.deployed();
+
+    console.log("PMToken deployed to: ", pmToken.address)
+    
 }
 
 main()
