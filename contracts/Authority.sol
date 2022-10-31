@@ -20,8 +20,8 @@ contract Authority is
     PausableUpgradeable,
     ProxyCheckerUpgradeable,
     BlacklistableUpgradeable,
-    AccessControlEnumerableUpgradeable,
-    FundForwarderUpgradeable
+    FundForwarderUpgradeable,
+    AccessControlEnumerableUpgradeable
 {
     /// @dev value is equal to keccak256("Authority_v1")
     bytes32 public constant VERSION =

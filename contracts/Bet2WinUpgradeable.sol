@@ -21,11 +21,11 @@ import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeab
 
 contract Bet2WinUpgradeable is
     BaseUpgradeable,
+    IBet2WinUpgradeable,
     ReferralUpgradeable,
     SignableUpgradeable,
     TransferableUpgradeable,
-    FundForwarderUpgradeable,
-    IBet2WinUpgradeable
+    FundForwarderUpgradeable
 {
     using Array for uint256[];
     using Encoder for uint256;
@@ -316,7 +316,7 @@ contract Bet2WinUpgradeable is
 
     function updateTreasury(ITreasury treasury_)
         external
-        override(FundForwarderUpgradeable, IFundForwarderUpgradeable)
+        override
         onlyRole(Roles.OPERATOR_ROLE)
     {
         emit TreasuryUpdated(treasury(), treasury_);

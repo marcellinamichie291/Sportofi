@@ -9,10 +9,7 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 /// @title Bet2Win interface for Bet2Win contract
 /// @notice Contains Bet2Win Interface for contract interaction
-interface IBet2WinUpgradeable is
-    ISignableUpgradeable,
-    IFundForwarderUpgradeable
-{
+interface IBet2WinUpgradeable is ISignableUpgradeable {
     struct Payment {
         address referrer;
         uint8 v;
