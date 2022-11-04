@@ -9,6 +9,7 @@ import "./internal/ProxyChecker.sol";
 import "./internal/FundForwarder.sol";
 
 import "./interfaces/IVestingSchedule.sol";
+import {IKillable} from "./internal-upgradeable/ProxylessUpgrader.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "./libraries/FixedPointMathLib.sol";
@@ -16,6 +17,7 @@ import "./libraries/FixedPointMathLib.sol";
 contract VestingSchedule is
     Base,
     Context,
+    IKillable,
     ProxyChecker,
     FundForwarder,
     ReentrancyGuard,
@@ -58,6 +60,16 @@ contract VestingSchedule is
 
         require(address(vestingToken_) != address(0), "VESTING: ZERO_ADDRESS");
         vestingToken = vestingToken_;
+    }
+
+    function kill() external onlyRole(Roles.FACTORY_ROLE) {
+        address _treasury = address(treasury());
+        _safeERC20Transfer(
+            vestingToken,
+            _treasury,
+            vestingToken.balanceOf(address(this))
+        );
+        selfdestruct(payable(_treasury));
     }
 
     function createBatchSchedules(
