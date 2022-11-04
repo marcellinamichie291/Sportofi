@@ -70,10 +70,7 @@ contract Bet2WinUpgradeable is
     //  gambler => key(matchId, gameId, settleStatus, betType) => (sideAgainst, amount, odd)[32]
     mapping(address => mapping(uint48 => uint128[32])) private __bets;
 
-    address public defaultReferrer;
-
     function initialize(
-        address defaultReferrer_,
         uint16[] calldata levelBonusRates_,
         IAuthority authority_,
         ITreasury treasury_,
@@ -84,23 +81,11 @@ contract Bet2WinUpgradeable is
         native2USD = priceFeed_;
         rewardToken = rewardToken_;
         reward2USDPair = pair_;
-        __updateDefaultReferrer(defaultReferrer_);
 
         __Signable_init("Bet2Win", "2");
         __FundForwarder_init_unchained(treasury_);
         __Referral_init_unchained(levelBonusRates_);
         __Base_init_unchained(authority_, Roles.TREASURER_ROLE);
-    }
-
-    function updateDefaultReferrer(address referrer_)
-        external
-        onlyRole(Roles.OPERATOR_ROLE)
-    {
-        __updateDefaultReferrer(referrer_);
-    }
-
-    function __updateDefaultReferrer(address referrer_) private {
-        defaultReferrer = referrer_;
     }
 
     function withdrawBonus() external {
@@ -160,7 +145,7 @@ contract Bet2WinUpgradeable is
         __processPayment(gambler, payment_);
         __processBet(gambler, betId_, payment_);
 
-        if (payment_.referrer != defaultReferrer)
+        if (payment_.referrer != address(0))
             _addReferrer(payment_.referrer, gambler);
     }
 
@@ -274,7 +259,6 @@ contract Bet2WinUpgradeable is
     function mockSettelBet(uint256 betSize_, uint256 odd_) external {
         uint256 received;
         {
-            address gambler = _msgSender();
             (uint256 res0, uint256 res1, ) = reward2USDPair.getReserves();
             IERC20Upgradeable _rewardToken = rewardToken;
             uint256 referralPercent = REFERRAL_PERCENT;
@@ -282,6 +266,7 @@ contract Bet2WinUpgradeable is
             uint256 amount = betSize_.mulDivDown(res0, res1);
             uint256 percentageFraction = PERCENTAGE_FRACTION;
             received = amount.mulDivDown(remainOdd, percentageFraction);
+            address gambler = _msgSender();
             _safeTransfer(_rewardToken, gambler, received);
             _updateReferrerBonus(
                 gambler,
@@ -328,8 +313,6 @@ contract Bet2WinUpgradeable is
 
         uint256 amount = payment_.amount;
         if (paymentToken != address(0)) {
-            require(payment_.deadline > block.timestamp, "BET2WIN: EXPIRED");
-
             IERC20PermitUpgradeable(paymentToken).permit(
                 gambler_,
                 address(this),
@@ -339,7 +322,6 @@ contract Bet2WinUpgradeable is
                 payment_.r,
                 payment_.s
             );
-
             if (msg.value != 0) _safeNativeTransfer(gambler_, msg.value);
         } else if (msg.value > amount) {
             unchecked {
@@ -425,8 +407,8 @@ contract Bet2WinUpgradeable is
         ][betSide_];
         betSize = betDetail.amount();
         sideAgainst = betDetail.sideAgainst();
-        betData = betData.betData();
-        odd = betData.odd();
+        betData = betDetail.betData();
+        odd = betDetail.odd();
     }
 
     /// @inheritdoc IBet2WinUpgradeable
@@ -462,13 +444,14 @@ contract Bet2WinUpgradeable is
         uint24 side_,
         uint16 sideAgainst_,
         uint8 betType_
-    ) external pure returns (uint256) {
-        uint256 a = (gameId_ << 96) | (matchId_ << 72);
-        uint256 b = (odd_ << 48) | (betData_ << 32);
-        uint256 c = (settleStatus_ << 24) | (side_ << 16);
-        uint256 d = (sideAgainst_ << 8) | betType_;
-        return a | b | c | d;
+    ) external pure returns (uint256 betId) {
+        assembly {
+            betId := or(shl(96, gameId_), shl(72, matchId_))
+            betId := or(betId, or(shl(48, odd_), shl(32, betData_)))
+            betId := or(betId, or(shl(24, settleStatus_), shl(16, side_)))
+            betId := or(betId, or(shl(8, sideAgainst_), betType_))
+        }
     }
 
-    uint256[38] private __gap;
+    uint256[39] private __gap;
 }

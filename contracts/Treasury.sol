@@ -31,16 +31,15 @@ contract Treasury is
     bytes32 private constant __PERMIT_TYPE_HASH =
         0x984451e1880855a56058ebd6b0f6c8dd534f21c83a8dedad93ab0e57c6c84c7a;
 
-    EnumerableSetUpgradeable.AddressSet private _payments;
     EnumerableSetUpgradeable.AddressSet private __payments;
 
     function initialize(IAuthority authority_) external initializer {
         /// @dev support native payment
         __addPayment(address(0));
 
-        __ReentrancyGuard_init();
-        __Base_init(authority_, 0);
-        __EIP712_init(type(Treasury).name, "2");
+        __ReentrancyGuard_init_unchained();
+        __Base_init_unchained(authority_, 0);
+        __EIP712_init_unchained(type(Treasury).name, "2");
     }
 
     function withdraw(
@@ -142,4 +141,6 @@ contract Treasury is
     function supportedPayment(address token_) public view returns (bool) {
         return __payments.contains(token_);
     }
+
+    uint256[49] private __gap;
 }

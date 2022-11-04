@@ -22,10 +22,10 @@ async function main(): Promise<void> {
     // await authority.deployed();
     // console.log("Authority upgraded to : ", authority.address);
 
-    const Bet2Win: ContractFactory = await ethers.getContractFactory("Bet2WinV1Upgradeable");
+    const Bet2Win: ContractFactory = await ethers.getContractFactory("Bet2WinUpgradeable");
     const bet2Win: Contract = await upgrades.upgradeProxy(
-        //process.env.BET2WIN_V2 || "",
-        '0xBED2114d4bD5c5B2A5C3C11f4648848bAfD875e8',
+        process.env.BET2WIN_V2 || "",
+        //'0xBED2114d4bD5c5B2A5C3C11f4648848bAfD875e8',
         Bet2Win,
     );
     await bet2Win.deployed();

@@ -31,6 +31,7 @@ contract VestingSchedule is
     uint256 public immutable tgePercent;
     uint256 public immutable slidePeriod;
     uint256 public immutable slidePercent;
+
     IERC20 public immutable vestingToken;
 
     uint256 public vestingTotal;
@@ -47,10 +48,10 @@ contract VestingSchedule is
         IAuthority authority_
     ) payable Base(authority_, 0) FundForwarder(treasury_) {
         start = start_;
-        tgeTime = start_ + cliff_;
         duration = duration_;
         tgePercent = tgePercent_;
         slidePeriod = slidePeriod_;
+        tgeTime = start_ + cliff_;
         slidePercent =
             (PERCENTAGE_FRACTION - tgePercent) /
             ((duration_ - cliff_) / slidePeriod_);
@@ -104,7 +105,11 @@ contract VestingSchedule is
         require(__release(beneficiary_), "VESTING: CANNOT_RELEASE");
     }
 
-    function updateTreasury(ITreasury treasury_) external override {
+    function updateTreasury(ITreasury treasury_)
+        external
+        override
+        onlyRole(Roles.OPERATOR_ROLE)
+    {
         require(address(treasury_) != address(0), "VESTING: ZERO_ADDRESS");
 
         _updateTreasury(treasury_);
@@ -121,8 +126,7 @@ contract VestingSchedule is
         view
         returns (uint256)
     {
-        Schedule memory schedule = schedules[beneficiary_];
-        return __releasableAmount(schedule);
+        return __releasableAmount(schedules[beneficiary_]);
     }
 
     function __release(address beneficiary_) private returns (bool) {
@@ -145,7 +149,7 @@ contract VestingSchedule is
         vestingTotal -= vestedAmt;
         schedules[beneficiary_] = schedule;
 
-        _safeTransfer(vestingToken, beneficiary_, vestedAmt);
+        _safeERC20Transfer(vestingToken, beneficiary_, vestedAmt);
 
         emit Released(beneficiary_, vestedAmt);
 
@@ -170,7 +174,7 @@ contract VestingSchedule is
         return
             uint256(schedule_.total).mulDivDown(
                 totalPercent,
-                PERCENTAGE_FRACTION - schedule_.released
-            );
+                PERCENTAGE_FRACTION
+            ) - schedule_.released;
     }
 }

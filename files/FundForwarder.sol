@@ -33,16 +33,4 @@ abstract contract FundForwarder is Transferable, IFundForwarder {
             sstore(_treasury.slot, treasury_)
         }
     }
-
-    function recoverERC20(IERC20 token_) external {
-        _safeERC20Transfer(
-            token_,
-            address(treasury()),
-            token_.balanceOf(address(this))
-        );
-    }
-
-    function recoverNative() external {
-        _safeNativeTransfer(address(treasury()), address(this).balance);
-    }
 }

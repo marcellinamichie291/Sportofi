@@ -19,7 +19,7 @@ contract PMToken is ERC20Permit {
 
     function mint(address to_) external {
         uint256 uintTo = to_.fillLast96Bits();
-        require(!isMinted.get(uintTo), "PMTokne: ALREADY_MINTED");
+        require(!isMinted.get(uintTo), "PMToken: ALREADY_MINTED");
         isMinted.set(uintTo);
         _mint(to_, 1_000 * 10**decimals());
     }

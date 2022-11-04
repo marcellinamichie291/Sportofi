@@ -23,11 +23,10 @@ async function main(): Promise<void> {
     // await treasury.deployed();
     // console.log("Treasury deployed to : ", treasury.address);
 
-    // const GovernanceToken: ContractFactory = await ethers.getContractFactory("GovernanceToken");
-    // const gToken: Contract = await GovernanceToken.deploy("SPORTOFI", "SPORT"
-    // );
-    // await gToken.deployed();
-    // console.log("GovernanceToken deployed to : ", gToken.address);
+    const GovernanceToken: ContractFactory = await ethers.getContractFactory("GovernanceToken");
+    const gToken: Contract = await GovernanceToken.deploy("SPORTOFI", "SPORTO", process.env.TREASURY);
+    await gToken.deployed();
+    console.log("GovernanceToken deployed to : ", gToken.address);
 
     // const Bet2Win: ContractFactory = await ethers.getContractFactory("Bet2WinUpgradeable");
     // const bet2Win: Contract = await upgrades.deployProxy(
@@ -50,12 +49,12 @@ async function main(): Promise<void> {
     // const Vesting: ContractFactory = await ethers.getContractFactory("VestingSchedule")
     // const vesting: Contract = await Vesting.deploy()
 
-    const PMToken: ContractFactory = await ethers.getContractFactory("PMToken")
-    const pmToken: Contract = await PMToken.deploy("PaymentToken", "PMT")
-    await pmToken.deployed();
+    // const PMToken: ContractFactory = await ethers.getContractFactory("PMToken")
+    // const pmToken: Contract = await PMToken.deploy("PaymentToken", "PMT")
+    // await pmToken.deployed();
 
-    console.log("PMToken deployed to: ", pmToken.address)
-    
+    // console.log("PMToken deployed to: ", pmToken.address)
+
 }
 
 main()

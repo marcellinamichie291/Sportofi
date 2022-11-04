@@ -82,7 +82,7 @@ abstract contract ReferralUpgradeable is
         referrals[referree_] = referrer_;
 
         uint256 level;
-        uint256 maxDepth = __maxDepth;
+        uint256 maxDepth = levelBonusRates.length;
         for (uint256 i; i < maxDepth; ) {
             require(referrer_ != referree_, "REFERRAL: CIRCULAR_REF_UNALLOWED");
 
@@ -99,8 +99,8 @@ abstract contract ReferralUpgradeable is
     }
 
     function _updateReferrerBonus(address referree_, uint256 amount_) internal {
-        uint256 maxDepth = __maxDepth;
         uint16[] memory _levelBonusRates = levelBonusRates;
+        uint256 maxDepth = _levelBonusRates.length;
         address referrer = referree_;
         uint256 denominator = _denominator();
         for (uint256 i; i < maxDepth; ) {

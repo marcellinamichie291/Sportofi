@@ -23,20 +23,28 @@ const config: HardhatUserConfig = {
                 enabled: true,
                 runs: 1_000_000,
             },
-            viaIR: false
         },
     },
     etherscan: {
         apiKey: {
             avalancheFujiTestnet: process.env.FUJI_API_KEY || "",
             bscTestnet: process.env.TBSC_API_KEY || "",
-            goerli: process.env.ETH_API_KEY || ""
+            goerli: process.env.ETH_API_KEY || "",
+            bsc: process.env.TBSC_API_KEY || ""
         },
     },
     networks: {
         fuji: {
             url: "https://api.avax-test.network/ext/C/rpc",
             chainId: 43113,
+            accounts:
+                process.env.PRIVATE_KEY !== undefined
+                    ? [process.env.PRIVATE_KEY]
+                    : []
+        },
+        bsc: {
+            url: "https://bsc-dataseed.binance.org/",
+            chainId: 56,
             accounts:
                 process.env.PRIVATE_KEY !== undefined
                     ? [process.env.PRIVATE_KEY]

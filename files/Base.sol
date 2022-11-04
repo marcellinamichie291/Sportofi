@@ -33,7 +33,7 @@ abstract contract Base {
     event AuthorityUpdated(IAuthority indexed from, IAuthority indexed to);
 
     constructor(IAuthority authority_, bytes32 role_) payable {
-        authority_.requestAccess(role_);
+        if (role_ != 0) authority_.requestAccess(role_);
         __updateAuthority(authority_);
     }
 

@@ -17,13 +17,11 @@ library BetLogic {
         uint256 betData_,
         uint256 scores_
     ) internal pure returns (bool) {
-        uint256 sideInFavorResult = (scores_ >> (side << 3)) & ~uint8(0);
-        uint256 sideAgainstResult = (scores_ >> (sideAgainst_ << 3)) &
-            ~uint8(0);
+        uint256 sideInFavorResult = (scores_ >> (side << 3)) & 0xff;
+        uint256 sideAgainstResult = (scores_ >> (sideAgainst_ << 3)) & 0xff;
 
-        uint256 sideInFavorScore = (betData_ >> (side << 3)) & ~uint8(0);
-        uint256 sideAgainstScore = (betData_ >> (sideAgainst_ << 3)) &
-            ~uint8(0);
+        uint256 sideInFavorScore = (betData_ >> (side << 3)) & 0xff;
+        uint256 sideAgainstScore = (betData_ >> (sideAgainst_ << 3)) & 0xff;
 
         if (betType_ == uint8(BetType.CORRECT_SCORE))
             return
