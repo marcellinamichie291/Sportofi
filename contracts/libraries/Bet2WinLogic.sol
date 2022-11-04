@@ -27,13 +27,13 @@ library BetLogic {
             return
                 sideAgainstScore == sideAgainstResult &&
                 sideInFavorScore == sideInFavorResult;
-        else if (betType_ == uint8(BetType.OVER))
+        if (betType_ == uint8(BetType.OVER))
             return sideInFavorResult + sideAgainstResult >= sideInFavorScore;
-        else if (betType_ == uint8(BetType.UNDER))
+        if (betType_ == uint8(BetType.UNDER))
             return sideInFavorResult + sideAgainstResult < sideInFavorScore;
-        else if (betType_ == uint8(BetType.WIN))
+        if (betType_ == uint8(BetType.WIN))
             return sideInFavorResult > sideAgainstResult;
-        else if (betType_ == uint8(BetType.DRAW))
+        if (betType_ == uint8(BetType.DRAW))
             return sideInFavorResult == sideAgainstResult;
 
         return false;

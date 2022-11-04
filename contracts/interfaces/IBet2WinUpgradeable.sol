@@ -26,7 +26,7 @@ interface IBet2WinUpgradeable is ISignableUpgradeable {
         address indexed user,
         uint256 indexed id,
         uint256 indexed side,
-        uint256 settleStatus,
+        uint256 sideAgainst,
         uint256 odd,
         uint256 usdAmt
     );
@@ -93,7 +93,7 @@ interface IBet2WinUpgradeable is ISignableUpgradeable {
 
     /// @notice Get all users for offchain filtering
     /// @return All users that have already placed bet
-    function users() external view returns (address[] memory);
+    //function users() external view returns (address[] memory);
 
     /// @notice Get bet data of specific match
     /// @return Struct bet containing bet info
@@ -103,9 +103,9 @@ interface IBet2WinUpgradeable is ISignableUpgradeable {
     //     uint256 matchId_
     // ) external view returns (Bet memory);
 
-    function matchesIds(uint8 gameId_) external view returns (uint256[] memory);
+    //function matchesIds(uint8 gameId_) external view returns (uint256[] memory);
 
-    function gameIds() external view returns (uint256[] memory);
+    //function gameIds() external view returns (uint256[] memory);
 
     /// @notice Encode bet data into a unique number
     /// @dev Input data must be in range of 48 bits

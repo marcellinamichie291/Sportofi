@@ -70,6 +70,8 @@ contract Bet2WinUpgradeable is
     //  gambler => key(matchId, gameId, settleStatus, betType) => (sideAgainst, amount, odd)[32]
     mapping(address => mapping(uint48 => uint128[32])) private __bets;
 
+    address public defaultReferrer;
+
     function initialize(
         uint16[] calldata levelBonusRates_,
         IAuthority authority_,
@@ -135,11 +137,11 @@ contract Bet2WinUpgradeable is
         uint256 deadline_,
         bytes calldata signature_,
         Payment calldata payment_
-    ) external payable whenNotPaused returns (bool isNewUserAdded) {
+    ) external payable whenNotPaused {
         address gambler = _msgSender();
         _checkBlacklist(gambler);
         _onlyEOA(gambler);
-        isNewUserAdded = __users.add(gambler);
+        //isNewUserAdded = __users.add(gambler);
 
         __checkSignature(gambler, betId_, payment_, deadline_, signature_);
         __processPayment(gambler, payment_);
@@ -230,8 +232,11 @@ contract Bet2WinUpgradeable is
 
             unchecked {
                 if (payment_.token == address(0)) {
-                    (, int256 usdUnit, , , ) = native2USD.latestRoundData();
-                    usdSize += (betDetail.amount() * uint256(usdUnit)) / 1e8;
+                    AggregatorV3Interface _native2USD = native2USD;
+                    (, int256 usdUnit, , , ) = _native2USD.latestRoundData();
+                    usdSize +=
+                        (betDetail.amount() * uint256(usdUnit)) /
+                        _native2USD.decimals();
                 } else usdSize += betDetail.amount();
             }
         }
@@ -248,12 +253,12 @@ contract Bet2WinUpgradeable is
             odd
         );
 
-        __gameIds.push(gameId);
-        __betTypes.push(betType);
-        __matchIds[gameId].push(matchId);
-        __settleStatuses.push(settleStatus);
+        // __gameIds.push(gameId);
+        // __betTypes.push(betType);
+        // __matchIds[gameId].push(matchId);
+        // __settleStatuses.push(settleStatus);
 
-        emit BetPlaced(gambler_, id, side, settleStatus, odd, usdSize);
+        emit BetPlaced(gambler_, id, side, sideAgainst, odd, usdSize);
     }
 
     function mockSettelBet(uint256 betSize_, uint256 odd_) external {
@@ -311,21 +316,20 @@ contract Bet2WinUpgradeable is
             "BET2WIN: UNSUPPORTED_PAYMENT"
         );
 
-        uint256 amount = payment_.amount;
         if (paymentToken != address(0)) {
             IERC20PermitUpgradeable(paymentToken).permit(
                 gambler_,
                 address(this),
-                amount,
+                payment_.amount,
                 payment_.deadline,
                 payment_.v,
                 payment_.r,
                 payment_.s
             );
             if (msg.value != 0) _safeNativeTransfer(gambler_, msg.value);
-        } else if (msg.value > amount) {
+        } else if (msg.value > payment_.amount) {
             unchecked {
-                _safeNativeTransfer(gambler_, msg.value - amount);
+                _safeNativeTransfer(gambler_, msg.value - payment_.amount);
             }
         }
 
@@ -333,7 +337,7 @@ contract Bet2WinUpgradeable is
             IERC20Upgradeable(paymentToken),
             gambler_,
             address(_treasury),
-            amount
+            payment_.amount
         );
     }
 
@@ -362,78 +366,75 @@ contract Bet2WinUpgradeable is
         return amount.mulDivDown(remainOdd, PERCENTAGE_FRACTION);
     }
 
-    /// @inheritdoc IBet2WinUpgradeable
-    function users() external view returns (address[] memory) {
-        return __users.values();
-    }
+    // function users() external view returns (address[] memory) {
+    //     return __users.values();
+    // }
 
-    function settleStatuses() external view returns (uint256[] memory) {
-        uint256[] memory data;
-        uint8[] memory matchIds = __settleStatuses;
-        assembly {
-            data := matchIds
-        }
-        return data.buildSet();
-    }
+    // function settleStatuses() external view returns (uint256[] memory) {
+    //     uint256[] memory data;
+    //     uint8[] memory matchIds = __settleStatuses;
+    //     assembly {
+    //         data := matchIds
+    //     }
+    //     return data.buildSet();
+    // }
 
-    function betTypes() external view returns (uint256[] memory) {
-        uint256[] memory data;
-        uint8[] memory matchIds = __betTypes;
-        assembly {
-            data := matchIds
-        }
-        return data.buildSet();
-    }
+    // function betTypes() external view returns (uint256[] memory) {
+    //     uint256[] memory data;
+    //     uint8[] memory matchIds = __betTypes;
+    //     assembly {
+    //         data := matchIds
+    //     }
+    //     return data.buildSet();
+    // }
 
-    function betOf(
-        address gambler_,
-        uint256 gameId_,
-        uint256 matchId_,
-        uint256 status_,
-        uint256 betType_,
-        uint256 betSide_
-    )
-        external
-        view
-        returns (
-            uint256 betSize,
-            uint256 sideAgainst,
-            uint256 betData,
-            uint256 odd
-        )
-    {
-        uint256 betDetail = __bets[gambler_][
-            Encoder.toUniqueKey(gameId_, matchId_, status_, betType_)
-        ][betSide_];
-        betSize = betDetail.amount();
-        sideAgainst = betDetail.sideAgainst();
-        betData = betDetail.betData();
-        odd = betDetail.odd();
-    }
+    // function betOf(
+    //     address gambler_,
+    //     uint256 gameId_,
+    //     uint256 matchId_,
+    //     uint256 status_,
+    //     uint256 betType_,
+    //     uint256 betSide_
+    // )
+    //     external
+    //     view
+    //     returns (
+    //         uint256 betSize,
+    //         uint256 sideAgainst,
+    //         uint256 betData,
+    //         uint256 odd
+    //     )
+    // {
+    //     uint256 betDetail = __bets[gambler_][
+    //         Encoder.toUniqueKey(gameId_, matchId_, status_, betType_)
+    //     ][betSide_];
+    //     betSize = betDetail.amount();
+    //     sideAgainst = betDetail.sideAgainst();
+    //     betData = betDetail.betData();
+    //     odd = betDetail.odd();
+    // }
 
-    /// @inheritdoc IBet2WinUpgradeable
-    function matchesIds(uint8 gameId_)
-        external
-        view
-        returns (uint256[] memory)
-    {
-        uint256[] memory data;
-        uint24[] memory matchIds = __matchIds[gameId_];
-        assembly {
-            data := matchIds
-        }
-        return data.buildSet();
-    }
+    // function matchesIds(uint8 gameId_)
+    //     external
+    //     view
+    //     returns (uint256[] memory)
+    // {
+    //     uint256[] memory data;
+    //     uint24[] memory matchIds = __matchIds[gameId_];
+    //     assembly {
+    //         data := matchIds
+    //     }
+    //     return data.buildSet();
+    // }
 
-    /// @inheritdoc IBet2WinUpgradeable
-    function gameIds() external view returns (uint256[] memory) {
-        uint256[] memory data;
-        uint8[] memory _gameIds = __gameIds;
-        assembly {
-            data := _gameIds
-        }
-        return data.buildSet();
-    }
+    // function gameIds() external view returns (uint256[] memory) {
+    //     uint256[] memory data;
+    //     uint8[] memory _gameIds = __gameIds;
+    //     assembly {
+    //         data := _gameIds
+    //     }
+    //     return data.buildSet();
+    // }
 
     function betIdOf(
         uint104 gameId_,
@@ -453,5 +454,5 @@ contract Bet2WinUpgradeable is
         }
     }
 
-    uint256[39] private __gap;
+    uint256[38] private __gap;
 }
